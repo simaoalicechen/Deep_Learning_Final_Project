@@ -170,3 +170,5 @@ cython_debug/
 *.tgz
 *.tar.gz
 
+# zip
+*.zip
