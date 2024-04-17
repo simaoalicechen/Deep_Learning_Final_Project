@@ -81,6 +81,7 @@ class Discriminator(nn.Module):
         return validity
 
 
+
 # Loss function
 adversarial_loss = torch.nn.BCELoss()
 
@@ -94,25 +95,72 @@ if cuda:
     adversarial_loss.cuda()
 
 # Configure data loader
-os.makedirs("../data/mnist", exist_ok=True)
-dataloader = torch.utils.data.DataLoader(
-    datasets.MNIST(
-        "../data/mnist",
-        train=True,
-        download=True,
-        transform=transforms.Compose(
-            [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-        ),
-    ),
-    batch_size=opt.batch_size,
-    shuffle=True,
-)
+transform = transforms.Compose([
+    transforms.Resize(opt.img_size),
+    transforms.CenterCrop(opt.img_size),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+])
+
+train_dataset = datasets.ImageNet(root="./data/ImageNet", split='train', download=True, transform=transform)
+dataloader = DataLoader(train_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.n_cpu)
 
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr * 0.5, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr * 0.5, betas=(opt.b1, opt.b2))
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+
+
+
+# # Loss function
+# adversarial_loss = torch.nn.BCELoss()
+
+# # Initialize generator and discriminator
+# generator = Generator()
+# discriminator = Discriminator()
+
+# if cuda:
+#     generator.cuda()
+#     discriminator.cuda()
+#     adversarial_loss.cuda()
+
+# # Configure data loader
+# os.makedirs("../data/ImageNet", exist_ok=True)
+# # imagenet_data = datasets.ImageNet(root='path/to/imagenet', ...)
+# # dataloader = torch.utils.data.DataLoader(
+# #     imagenet_data, batch_size=opt.batch_size, shuffle=True, ...)
+
+# # Define transformations for preprocessing
+# transform = transforms.Compose([
+#     transforms.Resize(256),        # Resize the input image to 256x256
+#     transforms.CenterCrop(224),    # Crop the center 224x224 region
+#     transforms.ToTensor(),         # Convert PIL Image to tensor
+#     transforms.Normalize(          # Normalize with ImageNet mean and standard deviation
+#         mean=[0.485, 0.456, 0.406],
+#         std=[0.229, 0.224, 0.225]
+#     )
+# ])
+
+# dataloader = torch.utils.data.DataLoader(
+#     datasets.ImageNet(
+#         "../data/ImageNet",
+#         train=True,
+#         download=True,
+#         transform = transform, 
+#         # transform=transforms.Compose(
+#         #     [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
+#         # ),
+#     ),
+#     batch_size=opt.batch_size,
+#     shuffle=True,
+# )
+
+# # Optimizers
+# optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr * 0.5, betas=(opt.b1, opt.b2))
+# optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr * 0.5, betas=(opt.b1, opt.b2))
+
+# Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 # ----------
 #  Training
