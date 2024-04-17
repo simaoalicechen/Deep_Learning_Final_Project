@@ -2,7 +2,7 @@ import argparse
 import os
 import numpy as np
 import math
-
+import torchvision
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
@@ -94,19 +94,35 @@ if cuda:
     adversarial_loss.cuda()
 
 # Configure data loader
-os.makedirs("../data/mnist", exist_ok=True)
-dataloader = torch.utils.data.DataLoader(
-    datasets.MNIST(
-        "../data/mnist",
-        train=True,
-        download=True,
-        transform=transforms.Compose(
-            [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-        ),
-    ),
-    batch_size=opt.batch_size,
-    shuffle=True,
-)
+# os.makedirs("../data/mnist", exist_ok=True)
+# dataloader = torch.utils.data.DataLoader(
+#     datasets.MNIST(
+#         "../data/mnist",
+#         train=True,
+#         download=True,
+#         transform=transforms.Compose(
+#             [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
+#         ),
+#     ),
+#     batch_size=opt.batch_size,
+#     shuffle=True,
+# )
+
+# Define the transformation to be applied to the images
+transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+train_dataset = torchvision.datasets.Imagenette(root="./data", split='train', download=False, transform=transform)
+
+# Create a DataLoader to facilitate batch processing
+batch_size = 32  
+trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
+
 
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr * 0.5, betas=(opt.b1, opt.b2))
@@ -119,7 +135,7 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 
 for epoch in range(opt.n_epochs):
-    for i, (imgs, _) in enumerate(dataloader):
+    for i, (imgs, _) in enumerate(trainloader):
 
         # Adversarial ground truths
         valid = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
