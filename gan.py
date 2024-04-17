@@ -64,9 +64,11 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
+        input_features = 28*28*3 
 
         self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
+            # nn.Linear(int(np.prod(img_shape)), 512),
+            nn.Linear(input_features, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
@@ -76,10 +78,10 @@ class Discriminator(nn.Module):
 
     def forward(self, img):
         img_flat = img.view(img.size(0), -1)
+        print(img_flat.size())
         validity = self.model(img_flat)
 
         return validity
-
 
 # Loss function
 adversarial_loss = torch.nn.BCELoss()
