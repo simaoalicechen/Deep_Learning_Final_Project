@@ -5,11 +5,11 @@ import math
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
-
+import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torch.autograd import Variable
-
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
@@ -64,11 +64,12 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-        input_features = 28*28*3 
+        # input_features = 28*28*3 
+        input_features = np.prod(img_shape)
 
         self.model = nn.Sequential(
-            # nn.Linear(int(np.prod(img_shape)), 512),
             nn.Linear(input_features, 512),
+            # nn.Linear(input_features, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
@@ -85,8 +86,6 @@ class Discriminator(nn.Module):
 
 # Loss function
 adversarial_loss = torch.nn.BCELoss()
-
-# Initialize generator and discriminator
 generator = Generator()
 discriminator = Discriminator()
 
@@ -94,21 +93,6 @@ if cuda:
     generator.cuda()
     discriminator.cuda()
     adversarial_loss.cuda()
-
-# Configure data loader
-# os.makedirs("../data/mnist", exist_ok=True)
-# dataloader = torch.utils.data.DataLoader(
-#     datasets.MNIST(
-#         "../data/mnist",
-#         train=True,
-#         download=True,
-#         transform=transforms.Compose(
-#             [transforms.Resize(opt.img_size), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
-#         ),
-#     ),
-#     batch_size=opt.batch_size,
-#     shuffle=True,
-# )
 
 # Define the transformation to be applied to the images
 transform = transforms.Compose([
@@ -118,12 +102,15 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-train_dataset = torchvision.datasets.Imagenette(root="./data", split='train', download=False, transform=transform)
+# Create a custom dataset from the ImageFolder class
+train_dataset = ImageFolder(root="./data/ImageNet/train.X4", transform=transform)
+val_dataset = ImageFolder(root="./data/ImageNet/val.X", transform=transform)
+
 
 # Create a DataLoader to facilitate batch processing
 batch_size = 32  
 trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-
+valloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 
 # Optimizers
