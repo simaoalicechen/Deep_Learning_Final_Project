@@ -164,7 +164,9 @@ cython_debug/
 
 # jpg
 *.jpg
+*.JPG
 
 # tgz
 *.tgz
+*.tar.gz
 
