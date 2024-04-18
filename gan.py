@@ -13,6 +13,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
+from torchinfo import summary
 
 os.makedirs("images", exist_ok=True)
 
@@ -24,8 +25,8 @@ parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first 
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=28, help="size of each image dimension")
-parser.add_argument("--channels", type=int, default=1, help="number of image channels")
+parser.add_argument("--img_size", type=int, default=224, help="size of each image dimension")
+parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
 opt = parser.parse_args()
 print(opt)
@@ -64,11 +65,9 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-        # input_features = 28*28*3 
-        input_features = np.prod(img_shape)
 
         self.model = nn.Sequential(
-            nn.Linear(input_features, 512),
+            nn.Linear(int(np.prod(img_shape)), 512),
             # nn.Linear(input_features, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 256),
@@ -79,7 +78,6 @@ class Discriminator(nn.Module):
 
     def forward(self, img):
         img_flat = img.view(img.size(0), -1)
-        print(img_flat.size())
         validity = self.model(img_flat)
 
         return validity
@@ -167,9 +165,9 @@ for epoch in range(opt.n_epochs):
 
         print(
             "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), g_loss.item())
+            % (epoch, opt.n_epochs, i, len(trainloader), d_loss.item(), g_loss.item())
         )
 
-        batches_done = epoch * len(dataloader) + i
+        batches_done = epoch * len(trainloader) + i
         if batches_done % opt.sample_interval == 0:
             save_image(gen_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
