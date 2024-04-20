@@ -21,11 +21,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchinfo import summary
 
+
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default = 300, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
@@ -33,7 +34,7 @@ parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads 
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
 parser.add_argument("--img_size", type=int, default=224, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
-parser.add_argument("--sample_interval", type=int, default=100, help="interval betwen image samples")
+parser.add_argument("--sample_interval", type=int, default=25, help="interval betwen image samples")
 opt = parser.parse_args()
 print(opt)
 
@@ -41,56 +42,95 @@ img_shape = (opt.channels, opt.img_size, opt.img_size)
 
 cuda = True if torch.cuda.is_available() else False
 
-
+# DCGAN modification source: https://github.com/joeylitalien/celeba-gan-pytorch/blob/master/src/dcgan.py#L213
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, latent_dim):
         super(Generator, self).__init__()
 
-        def block(in_feat, out_feat, normalize=True):
-            layers = [nn.Linear(in_feat, out_feat)]
-            if normalize:
-                layers.append(nn.BatchNorm1d(out_feat, 0.8))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
-            return layers
+        # Project and reshape:
+        self.linear = nn.Sequential(
+          nn.Linear(latent_dim, 512*4*4, bias = False),
+          nn.BatchNorm1d(512*4*4),
+          nn.ReLU(inplace=True))
 
-        self.model = nn.Sequential(
-            *block(opt.latent_dim, 128, normalize=False),
-            *block(128, 256),
-            *block(256, 512),
-            *block(512, 1024),
-            nn.Linear(1024, int(np.prod(img_shape))),
-            nn.Tanh()
-        )
+        # Upsample
+        self.features = nn.Sequential(
+          nn.ConvTranspose2d(512, 256, kernel_size = 4, stride = 2, padding=1, bias=False),
+          nn.BatchNorm2d(256), 
+          nn.ReLU(inplace = True),
+          nn.ConvTranspose2d(256, 128, 4, 2, 1, bias=False),
+          nn.BatchNorm2d(128),
+          nn.ReLU(inplace=True),
+          nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=False),
+          nn.BatchNorm2d(64),
+          nn.ReLU(inplace=True),
+          nn.ConvTranspose2d(64, 3, 4, 2, 1, bias=False),
+          nn.Tanh())
 
-    def forward(self, z):
-        img = self.model(z)
-        img = img.view(img.size(0), *img_shape)
-        return img
+    def forward(self, x):
+        x = self.linear(x).view(x.size(0), -1, 4, 4)
+        return self.features(x)
 
 
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
-        self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
-            # nn.Linear(input_features, 512),
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Conv2d(64, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
-            nn.Sigmoid(),
-        )
+            nn.Conv2d(128, 256, 4, 2, 1),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(256, 512, 4, 2, 1),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(512, 1, 4, 1))
 
-    def forward(self, img):
-        img_flat = img.view(img.size(0), -1)
-        validity = self.model(img_flat)
+    def forward(self, x):
+            # Apply layers
+            x = self.features(x)  # Assuming features ends with a Conv layer
+            x = x.view(x.size(0), -1)  # Flatten the output
+            x = torch.sigmoid(x)  # Apply sigmoid to squash outputs to [0, 1]
+            return x
 
-        return validity
+
+    def clip(self, c=0.05):
+        """Weight clipping in (-c, c)"""
+
+        for p in self.parameters():
+            p.data.clamp_(-c, c)
+
+class Disc(nn.Module):
+
+    def __init__(self, in_dim, dim=64):
+        super(Disc, self).__init__()
+
+        def conv_bn_lrelu(in_dim, out_dim):
+            return nn.Sequential(
+            nn.Conv2d(in_dim, out_dim, 5, 2, 2),
+            nn.BatchNorm2d(out_dim),
+            nn.LeakyReLU(0.2))
+
+        self.ls = nn.Sequential(
+            nn.Conv2d(in_dim, dim, 5, 2, 2), nn.LeakyReLU(0.2),
+            conv_bn_lrelu(dim, dim * 2),
+            conv_bn_lrelu(dim * 2, dim * 4),
+            conv_bn_lrelu(dim * 4, dim * 8),
+            nn.Conv2d(dim * 8, 1, 4))
+
+    def forward(self, x):
+        y = self.ls(x)
+        y = y.view(-1)
+        return y
+
 
 # Loss function
 adversarial_loss = torch.nn.BCELoss()
-generator = Generator()
+generator = Generator(opt.latent_dim)
 discriminator = Discriminator()
 
 if cuda:
@@ -108,13 +148,8 @@ device = torch.device('cuda:0' if (
 
 # Root directory for the dataset
 data_root = 'data/celebA'
-# Path to folder with the dataset
 dataset_folder = f'{data_root}'
 zip_data_folder = f'{data_root}'
-
-# Unzip the downloaded file 
-# with zipfile.ZipFile(zip_data_folder, 'r') as ziphandler:
-#   ziphandler.extractall(zip_data_folder)
 
 ## Create a custom Dataset class
 class CelebADataset(Dataset):
@@ -177,24 +212,6 @@ celeba_dataloader = torch.utils.data.DataLoader(celeba_dataset,
 
 print(len(celeba_dataloader))
 
-# # Define the transformation to be applied to the images
-# transform = transforms.Compose([
-#     transforms.Resize(256),
-#     transforms.CenterCrop(224),
-#     transforms.ToTensor(),
-#     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-# ])
-
-# # Create a custom dataset from the ImageFolder class
-# train_dataset = ImageFolder(root="./data/ImageNet/train.X4", transform=transform)
-# val_dataset = ImageFolder(root="./data/ImageNet/val.X", transform=transform)
-
-# # Create a DataLoader to facilitate batch processing
-# batch_size = 32  
-# trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-# valloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-
-
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
@@ -206,15 +223,12 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 n = 0
 print("length of celeba_dataloader", len(celeba_dataloader))
-# for batch in celeba_dataloader:
-#     print(type(batch))
-#     print(len(batch))
-#     # print(batch)
-#     print(batch.shape)
-
 for epoch in range(opt.n_epochs):
-    # for i, (imgs, _) in enumerate(celeba_dataloader):
     for i, batch in enumerate(celeba_dataloader):
+        print(i)
+        print(len(batch))
+        print(type(batch))
+        print(batch.shape)
         imgs = batch
 
         # Adversarial ground truths
@@ -223,6 +237,12 @@ for epoch in range(opt.n_epochs):
 
         # Configure input
         real_imgs = Variable(imgs.type(Tensor))
+
+        print("Shape of real images:", real_imgs.shape)
+        print("Shape of validity labels:", valid.shape)
+
+        real_loss = adversarial_loss(discriminator(real_imgs), valid)
+
 
         # -----------------
         #  Train Generator
@@ -262,9 +282,6 @@ for epoch in range(opt.n_epochs):
         )
 
         batches_done = epoch * len(celeba_dataloader) + i
-        print(len(celeba_dataloader))
-        print(batches_done)
-        print(opt.sample_interval)
         if batches_done % opt.sample_interval == 0:
             print(f"pictures {n}")
             n += 1
