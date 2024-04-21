@@ -1,28 +1,25 @@
 import argparse
 import os
 import numpy as np
-import zipfile 
-import gdown
+import zipfile
+import math
 import torch
 from natsort import natsorted
 import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-import math
 import torchvision
-import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
 from torchvision.utils import save_image
 import torchvision.transforms as transforms
-from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from torchvision import datasets
-from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torchinfo import summary
+from utils import load_dataset
 import matplotlib.pyplot as plt
-
 
 os.makedirs("images", exist_ok=True)
 
@@ -36,7 +33,7 @@ parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads 
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
 parser.add_argument("--img_size", type=int, default=224, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
-parser.add_argument("--sample_interval", type=int, default=25, help="interval betwen image samples")
+parser.add_argument("--sample_interval", type=int, default=200, help="interval betwen image samples")
 opt = parser.parse_args()
 print(opt)
 
@@ -91,10 +88,11 @@ class Discriminator(nn.Module):
             nn.Conv2d(512, 1, 4, 1))
 
     def forward(self, x):
-            x = self.features(x)  
-            x = x.view(x.size(0), -1)  
-            x = torch.sigmoid(x) 
-            return x
+        return self.features(x).view(-1)
+            # x = self.features(x)  
+            # x = x.view(x.size(0), -1)  
+            # x = torch.sigmoid(x) 
+            # return x
 
     def clip(self, c=0.05):
         """Weight clipping in (-c, c)"""
@@ -134,167 +132,97 @@ if cuda:
 # CelebA
 # The custom dataloader codes are from: https://stackoverflow.com/questions/65528568/how-do-i-load-the-celeba-dataset-on-google-colab-using-torch-vision-without-ru
 
-
-# Root directory for the dataset
 data_root = 'data/celebA'
 dataset_folder = f'{data_root}'
-zip_data_folder = f'{data_root}'
-
-## Create a custom Dataset class
-class CelebADataset(Dataset):
-  def __init__(self, root_dir, transform=None):
-    """
-    Args:
-      root_dir (string): Directory with all the images
-      transform (callable, optional): transform to be applied to each image sample
-    """
-    # Read names of images in the root directory
-    image_names = os.listdir(root_dir)
-
-    self.root_dir = root_dir
-    self.transform = transform 
-    self.image_names = natsorted(image_names)
-
-  def __len__(self): 
-    return len(self.image_names)
-
-  def __getitem__(self, idx):
-    # Get the path to the image 
-    img_path = os.path.join(self.root_dir, self.image_names[idx])
-    # Load image and convert it to RGB
-    img = Image.open(img_path).convert('RGB')
-    # Apply transformations to the image
-    if self.transform:
-      img = self.transform(img)
-
-    return img
-
-## Load the dataset 
-# Path to directory with all the images
-img_folder = f'{dataset_folder}/img_align_celeba'
-# Spatial size of training images, images are resized to this size.
-image_size = 64
-# Transformations to be applied to each individual image sample
-transform=transforms.Compose([
-    transforms.Resize(image_size),
-    transforms.CenterCrop(image_size),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                          std=[0.5, 0.5, 0.5])
+transform = transforms.Compose([
+    transforms.Resize((64, 64)),  # Resize images to 64x64
+    transforms.CenterCrop((64, 64)),  # Crop to remove unwanted borders
+    transforms.ToTensor(),  # Convert images to PyTorch tensors
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize tensors
 ])
-# Load the dataset from file and apply transformations
-celeba_dataset = CelebADataset(img_folder, transform)
+celeba_dataset = ImageFolder(root=data_root,
+            transform=transform)
 
-## Create a dataloader 
-# Batch size during training
-batch_size = 128
-# Number of workers for the dataloader
-num_workers = 0 if device.type == 'cuda' else 2
-# Whether to put fetched data tensors to pinned memory
-pin_memory = True if device.type == 'cuda' else False
+dataloader = DataLoader(celeba_dataset, batch_size=32, shuffle=True, num_workers=4)
 
-celeba_dataloader = torch.utils.data.DataLoader(celeba_dataset,
-                                                batch_size=batch_size,
-                                                num_workers=num_workers,
-                                                pin_memory=pin_memory,
-                                                shuffle=True)
+print("length of celeba_dataloader", len(dataloader))
+n = 0
+dataiter = iter(dataloader)
+images, labels = next(dataiter)
+print(type(images))  # Check if it's a tensor or a list
+print(images[:2])
+print(images.shape)  # Should only contain images
 
-print(len(celeba_dataloader))
 
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+criterion = nn.BCELoss()
 
-Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
-
-# ----------
-#  Training
-# ----------
-
-# Just show one batch of real input data
-def imshow(img, filename='output_image.png'):
-    img = img / 2 + 0.5  # unnormalize
-    npimg = img.numpy()
-    plt.figure(figsize=(8,8))  # Set the figure size to be larger
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))  # Reorder dimensions for matplotlib
-    plt.axis('off')  # Turn off the axis
-    plt.savefig(filename, bbox_inches='tight', pad_inches=0)  # Save the figure as a PNG file
-    plt.show()
-
-# Get some random training images
-dataiter = iter(celeba_dataloader)
-images = next(dataiter)  # Use next() function to get the next batch
-
-# Display and save the grid of images
-imshow(torchvision.utils.make_grid(images), 'sample_grid.png')
-
-print("length of celeba_dataloader", len(celeba_dataloader))
-n = 0
+os.makedirs("real_images", exist_ok=True)
 for epoch in range(opt.n_epochs):
-    for i, batch in enumerate(celeba_dataloader):
-        batch = batch.to(device)
-        print(i)
-        print(len(batch))
-        print(type(batch))
-        print(batch.shape)
-        imgs = batch
-
-
-        # Adversarial ground truths
-        # valid = torch.Tensor(imgs.size(0), 1).fill_(1.0).detach()
-        # fake = torch.Tensor(imgs.size(0), 1).fill_(0.0).detach()
-        z = torch.randn(imgs.shape[0], opt.latent_dim, device=device)  # Directly create on GPU
-        valid = torch.full((imgs.size(0), 1), 1.0, device=device)  # Also directly create on GPU
-        fake = torch.full((imgs.size(0), 1), 0.0, device=device)
-
-        # Configure input
-        real_imgs = imgs.type(Tensor)
-
-        print("Shape of real images:", real_imgs.shape)
-        print("Shape of validity labels:", valid.shape)
-
-        real_loss = F.binary_cross_entropy_with_logits(discriminator(real_imgs), valid)
-      
-
+    for i, (images, attributes) in enumerate(dataloader):
+        # Save the first 10 batches of images
+        # if i < 5:
+        #     # Save the images
+        #     torchvision.utils.save_image(images, f"real_images/batch_{i}.png", nrow=8, normalize=True)
+        #     print(f"Batch {i} of real images saved.")
+        # else:
+        #     break  # Stop after saving 10 batches
+            # print(images.shape)
+            # print(attributes.shape)
+        real_images = images.to(device)
+        batch_size = real_images.size(0)
+        # Create labels
+        real_labels = torch.ones(batch_size).to(device)
+        fake_labels = torch.zeros(batch_size).to(device)
         # -----------------
         #  Train Generator
         # -----------------
 
         optimizer_G.zero_grad()
 
-        # Sample noise as generator input
-        # z = torch.Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim)))
+        # Loss for real images
+        outputs = discriminator(real_images)
+        d_loss_real = F.binary_cross_entropy_with_logits(outputs, real_labels)
+        real_score = outputs
 
-        # Generate a batch of images
-        gen_imgs = generator(z)
+        # Loss for fake images
+        z = torch.randn(batch_size, 100).to(device)  # 100 is the size of the latent vector
+        fake_images = generator(z)
+        outputs = discriminator(fake_images.detach())
+        d_loss_fake = F.binary_cross_entropy_with_logits(outputs, fake_labels)
+        fake_score = outputs
 
-        # Loss measures generator's ability to fool the discriminator
-        g_loss = F.binary_cross_entropy_with_logits(discriminator(gen_imgs), valid)
+        # Combine losses
+        d_loss = d_loss_real + d_loss_fake
+        d_loss.backward()
+        optimizer_D.step()
+
+        # =============================================
+        # Train Generator: min log(1 - D(G(z))) <-> max log(D(G(z)))
+        # =============================================
+        optimizer_G.zero_grad()
+        
+        # Loss for fake images
+        outputs = discriminator(fake_images)
+        g_loss = F.binary_cross_entropy_with_logits(outputs, real_labels)
 
         g_loss.backward()
         optimizer_G.step()
 
-        # ---------------------
-        #  Train Discriminator
-        # ---------------------
-
-        optimizer_D.zero_grad()
-
-        # Measure discriminator's ability to classify real from generated samples
-        real_loss = F.binary_cross_entropy_with_logits(discriminator(real_imgs), valid)
-        fake_loss = F.binary_cross_entropy_with_logits(discriminator(gen_imgs.detach()), fake)
-        d_loss = (real_loss + fake_loss) / 2
-
-        d_loss.backward()
-        optimizer_D.step()
-
-        print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-            % (epoch, opt.n_epochs, i, len(celeba_dataloader), d_loss.item(), g_loss.item())
-        )
-
-        batches_done = epoch * len(celeba_dataloader) + i
-        if batches_done % opt.sample_interval == 0:
-            print(f"pictures {n}")
-            n += 1
-            save_image(gen_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
+        if (i + 1) % 100 == 0:
+            print(f'Epoch [{epoch+1}/{opt.n_epochs}], Step [{i+1}/{len(dataloader)}], '
+                  f'D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}, '
+                  f'D(x): {real_score.mean().item():.2f}, D(G(z)): {fake_score.mean().item():.2f}')
+        
+        if i % opt.sample_interval == 0:
+            # with torch.no_grad():
+            # sample_images = generator(fixed_noise).detach().cpu()
+            fake_images = fake_images.detach().cpu()
+            img_grid = torchvision.utils.make_grid(fake_images, nrow=5, normalize=True)
+            torchvision.utils.save_image(img_grid, f"images/epoch_{epoch}_batch_{i}.png")
+            plt.figure(figsize=(10,10))
+            plt.imshow(np.transpose(img_grid.numpy(), (1, 2, 0)))
+            plt.axis('off')
+            plt.show()
