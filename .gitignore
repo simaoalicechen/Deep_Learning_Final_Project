@@ -174,4 +174,4 @@ cython_debug/
 *.zip
 
 # data
-data/
+# data/
