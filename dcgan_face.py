@@ -5,6 +5,7 @@ import zipfile
 import gdown
 import torch
 from natsort import natsorted
+import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -20,13 +21,14 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torchinfo import summary
+import matplotlib.pyplot as plt
 
 
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 300, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
+parser.add_argument("--n_epochs", type=int, default = 200, help="number of epochs of training")
+parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
@@ -37,8 +39,6 @@ parser.add_argument("--channels", type=int, default=3, help="number of image cha
 parser.add_argument("--sample_interval", type=int, default=25, help="interval betwen image samples")
 opt = parser.parse_args()
 print(opt)
-
-img_shape = (opt.channels, opt.img_size, opt.img_size)
 
 cuda = True if torch.cuda.is_available() else False
 
@@ -91,12 +91,10 @@ class Discriminator(nn.Module):
             nn.Conv2d(512, 1, 4, 1))
 
     def forward(self, x):
-            # Apply layers
-            x = self.features(x)  # Assuming features ends with a Conv layer
-            x = x.view(x.size(0), -1)  # Flatten the output
-            x = torch.sigmoid(x)  # Apply sigmoid to squash outputs to [0, 1]
+            x = self.features(x)  
+            x = x.view(x.size(0), -1)  
+            x = torch.sigmoid(x) 
             return x
-
 
     def clip(self, c=0.05):
         """Weight clipping in (-c, c)"""
@@ -104,47 +102,38 @@ class Discriminator(nn.Module):
         for p in self.parameters():
             p.data.clamp_(-c, c)
 
-class Disc(nn.Module):
+def weights_init_normal(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0.0)
 
-    def __init__(self, in_dim, dim=64):
-        super(Disc, self).__init__()
-
-        def conv_bn_lrelu(in_dim, out_dim):
-            return nn.Sequential(
-            nn.Conv2d(in_dim, out_dim, 5, 2, 2),
-            nn.BatchNorm2d(out_dim),
-            nn.LeakyReLU(0.2))
-
-        self.ls = nn.Sequential(
-            nn.Conv2d(in_dim, dim, 5, 2, 2), nn.LeakyReLU(0.2),
-            conv_bn_lrelu(dim, dim * 2),
-            conv_bn_lrelu(dim * 2, dim * 4),
-            conv_bn_lrelu(dim * 4, dim * 8),
-            nn.Conv2d(dim * 8, 1, 4))
-
-    def forward(self, x):
-        y = self.ls(x)
-        y = y.view(-1)
-        return y
-
+ngpu = 1
+device = torch.device('cuda:0' if (
+    torch.cuda.is_available() and ngpu > 0) else 'cpu')
 
 # Loss function
-adversarial_loss = torch.nn.BCELoss()
+# adversarial_loss = torch.nn.BCELoss()
+# adversarial_loss = F.binary_cross_entropy_with_logits()
 generator = Generator(opt.latent_dim)
 discriminator = Discriminator()
+
+generator.apply(weights_init_normal)
+discriminator.apply(weights_init_normal)
+
+generator = generator.to(device)
+discriminator = discriminator.to(device)
 
 if cuda:
     generator.cuda()
     discriminator.cuda()
-    adversarial_loss.cuda()
+    # adversarial_loss.cuda()
 
 # CelebA
-## Setup
-# Number of gpus available
 # The custom dataloader codes are from: https://stackoverflow.com/questions/65528568/how-do-i-load-the-celeba-dataset-on-google-colab-using-torch-vision-without-ru
-ngpu = 1
-device = torch.device('cuda:0' if (
-    torch.cuda.is_available() and ngpu > 0) else 'cpu')
+
 
 # Root directory for the dataset
 data_root = 'data/celebA'
@@ -221,28 +210,51 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 #  Training
 # ----------
-n = 0
+
+# Just show one batch of real input data
+def imshow(img, filename='output_image.png'):
+    img = img / 2 + 0.5  # unnormalize
+    npimg = img.numpy()
+    plt.figure(figsize=(8,8))  # Set the figure size to be larger
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))  # Reorder dimensions for matplotlib
+    plt.axis('off')  # Turn off the axis
+    plt.savefig(filename, bbox_inches='tight', pad_inches=0)  # Save the figure as a PNG file
+    plt.show()
+
+# Get some random training images
+dataiter = iter(celeba_dataloader)
+images = next(dataiter)  # Use next() function to get the next batch
+
+# Display and save the grid of images
+imshow(torchvision.utils.make_grid(images), 'sample_grid.png')
+
 print("length of celeba_dataloader", len(celeba_dataloader))
+n = 0
 for epoch in range(opt.n_epochs):
     for i, batch in enumerate(celeba_dataloader):
+        batch = batch.to(device)
         print(i)
         print(len(batch))
         print(type(batch))
         print(batch.shape)
         imgs = batch
 
+
         # Adversarial ground truths
-        valid = Variable(Tensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
-        fake = Variable(Tensor(imgs.size(0), 1).fill_(0.0), requires_grad=False)
+        # valid = torch.Tensor(imgs.size(0), 1).fill_(1.0).detach()
+        # fake = torch.Tensor(imgs.size(0), 1).fill_(0.0).detach()
+        z = torch.randn(imgs.shape[0], opt.latent_dim, device=device)  # Directly create on GPU
+        valid = torch.full((imgs.size(0), 1), 1.0, device=device)  # Also directly create on GPU
+        fake = torch.full((imgs.size(0), 1), 0.0, device=device)
 
         # Configure input
-        real_imgs = Variable(imgs.type(Tensor))
+        real_imgs = imgs.type(Tensor)
 
         print("Shape of real images:", real_imgs.shape)
         print("Shape of validity labels:", valid.shape)
 
-        real_loss = adversarial_loss(discriminator(real_imgs), valid)
-
+        real_loss = F.binary_cross_entropy_with_logits(discriminator(real_imgs), valid)
+      
 
         # -----------------
         #  Train Generator
@@ -251,13 +263,13 @@ for epoch in range(opt.n_epochs):
         optimizer_G.zero_grad()
 
         # Sample noise as generator input
-        z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
+        # z = torch.Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim)))
 
         # Generate a batch of images
         gen_imgs = generator(z)
 
         # Loss measures generator's ability to fool the discriminator
-        g_loss = adversarial_loss(discriminator(gen_imgs), valid)
+        g_loss = F.binary_cross_entropy_with_logits(discriminator(gen_imgs), valid)
 
         g_loss.backward()
         optimizer_G.step()
@@ -269,8 +281,8 @@ for epoch in range(opt.n_epochs):
         optimizer_D.zero_grad()
 
         # Measure discriminator's ability to classify real from generated samples
-        real_loss = adversarial_loss(discriminator(real_imgs), valid)
-        fake_loss = adversarial_loss(discriminator(gen_imgs.detach()), fake)
+        real_loss = F.binary_cross_entropy_with_logits(discriminator(real_imgs), valid)
+        fake_loss = F.binary_cross_entropy_with_logits(discriminator(gen_imgs.detach()), fake)
         d_loss = (real_loss + fake_loss) / 2
 
         d_loss.backward()
