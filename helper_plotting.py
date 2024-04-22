@@ -48,6 +48,7 @@ def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=
     ax2.spines['bottom'].set_position(('outward', 45))
     ax2.set_xlabel('Epochs')
     ax2.set_xlim(ax1.get_xlim())
+    plt.title(f'Multiple Training Losses in {num_epochs} epochs')
     ###################
 
     plt.tight_layout()
@@ -63,56 +64,19 @@ def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=
     else:
         plt.show()
 
-def plot_discriminator_loss(losses, save_dir):
+def plot_accuracy_per_epoch(real_acc_per_epoch, fake_acc_per_epoch, num_epochs, save_dir = "reports"):
     plt.figure()
-    plt.plot(losses, label='Discriminator Loss')
-    plt.xlabel('Iterations')
-    plt.ylabel('Loss')
-    plt.title('Discriminator Loss Curve')
+    plt.plot(range(num_epochs), real_acc_per_epoch, label='Real Accuracy')
+    plt.plot(range(num_epochs), fake_acc_per_epoch, label='Fake Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy (%)')
+    plt.title(f'Discriminator Accuracy per Epoch in {num_epochs} Epochs')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-
-    # Create the reports directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
-
-    # Save the plot as a PNG file
-    plt.savefig(os.path.join(save_dir, 'discriminator_loss.png'))
-
-def plot_generated_images(data_loader, model, device, 
-                          unnormalizer=None,
-                          figsize=(20, 2.5), n_images=15, modeltype='autoencoder'):
-
-    fig, axes = plt.subplots(nrows=2, ncols=n_images, 
-                             sharex=True, sharey=True, figsize=figsize)
-    
-    for batch_idx, (features, _) in enumerate(data_loader):
-        
-        features = features.to(device)
-
-        color_channels = features.shape[1]
-        image_height = features.shape[2]
-        image_width = features.shape[3]
-        
-        with torch.no_grad():
-            if modeltype == 'autoencoder':
-                decoded_images = model(features)[:n_images]
-            elif modeltype == 'VAE':
-                encoded, z_mean, z_log_var, decoded_images = model(features)[:n_images]
-            else:
-                raise ValueError('`modeltype` not supported')
-
-        orig_images = features[:n_images]
-        break
-
-    for i in range(n_images):
-        for ax, img in zip(axes, [orig_images, decoded_images]):
-            curr_img = img[i].detach().to(torch.device('cpu'))        
-            if unnormalizer is not None:
-                curr_img = unnormalizer(curr_img)
-
-            if color_channels > 1:
-                curr_img = np.transpose(curr_img, (1, 2, 0))
-                ax[i].imshow(curr_img)
-            else:
-                ax[i].imshow(curr_img.view((image_height, image_width)), cmap='binary')
+    if save_dir:
+        # save_path = os.path.join(reports_dir, save_dir)
+        os.makedirs(save_dir, exist_ok=True)  # Ensure that the directory exists or create it
+        plt.savefig(os.path.join(save_dir, f"training_acc_{num_epochs}.png"))
+    else:
+        plt.show()

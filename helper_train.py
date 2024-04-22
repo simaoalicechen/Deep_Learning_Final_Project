@@ -6,21 +6,23 @@ import torch
 import torch.nn.functional as F
 import torchvision
 import torch.autograd
-from helper_plotting import plot_multiple_training_losses
-# from helper_evaluate import compute_accuracy
-# from helper_evaluate import compute_epoch_loss_classifier
-# from helper_evaluate import compute_epoch_loss_autoencoder
+from helper_plotting import plot_multiple_training_losses, plot_accuracy_per_epoch
 
 def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr, 
                  latent_dim, device, train_loader, loss_fn=None,
                  logging_interval=200, 
-                 save_model=None, save_images_dir = None, lr_scheduler=None):
-    num_epochs += 1
+                 save_model=None, 
+                 save_images_dir = None, 
+                 lr_scheduler=None):
+    # num_epochs += 1
+    print(num_epochs)
     log_dict = {'train_generator_loss_per_batch': [],
                 'train_discriminator_loss_per_batch': [],
                 'train_discriminator_real_acc_per_batch': [],
                 'train_discriminator_fake_acc_per_batch': [],
-                'images_from_noise_per_epoch': []}
+                'images_from_noise_per_epoch': [], 
+                'train_discriminator_real_acc_per_epoch':[],
+                'train_discriminator_fake_acc_per_epoch': []}
 
     if loss_fn is None:
         loss_fn = F.binary_cross_entropy_with_logits
@@ -28,9 +30,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
     fixed_noise = torch.randn(64, latent_dim, 1, 1, device=device)
 
     start_time = time.time()
-    for epoch in range(1, num_epochs):
+    for epoch in range(1, num_epochs+1):
         print(epoch)
-
+        epoch_real_acc = 0.0  # Initialize epoch_real_acc here
+        epoch_fake_acc = 0.0  # Initialize epoch_fake_acc here
+        num_batches = len(train_loader)
         model.train()
         for batch_idx, (features, _) in enumerate(train_loader):
 
@@ -75,8 +79,6 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
 
             optimizer_gen.zero_grad()
 
-           
-
             # get discriminator loss on fake images with flipped labels
             discr_pred_fake = model.discriminator_forward(fake_images).view(-1)
             gener_loss = loss_fn(discr_pred_fake, flipped_fake_labels)
@@ -93,26 +95,46 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
             # --------------------------   
             log_dict['train_generator_loss_per_batch'].append(gener_loss.item())
             log_dict['train_discriminator_loss_per_batch'].append(discr_loss.item())
+            predicted_labels_real = torch.where(discr_pred_real > 0., 1., 0.)
+            predicted_labels_fake = torch.where(discr_pred_fake > 0., 1., 0.)
+            acc_real = (predicted_labels_real == real_labels).float().mean().item() * 100.0
+            acc_fake = (predicted_labels_fake == fake_labels).float().mean().item() * 100.0
+            log_dict['train_discriminator_real_acc_per_batch'].append(acc_real)
+            log_dict['train_discriminator_fake_acc_per_batch'].append(acc_fake) 
             
-            predicted_labels_real = torch.where(discr_pred_real.detach() > 0., 1., 0.)
-            predicted_labels_fake = torch.where(discr_pred_fake.detach() > 0., 1., 0.)
-            acc_real = (predicted_labels_real == real_labels).float().mean()*100.
-            acc_fake = (predicted_labels_fake == fake_labels).float().mean()*100.
-            log_dict['train_discriminator_real_acc_per_batch'].append(acc_real.item())
-            log_dict['train_discriminator_fake_acc_per_batch'].append(acc_fake.item()) 
+            epoch_real_acc += acc_real
+            epoch_fake_acc += acc_fake
 
+            # print out every 400 batch's data
             if not batch_idx % logging_interval:
-                print('Epoch: %03d/%03d | Batch %03d/%03d | Gen/Dis Loss: %.4f/%.4f' 
-                       % (epoch+1, num_epochs, batch_idx, 
-                          len(train_loader), gener_loss.item(), discr_loss.item()))
+                print('Epoch: %03d/%03d | Batch %03d/%03d | Gen/Dis Loss: %.4f/%.4f | Real Acc/Fake Acc: %.2f%%/%.2f%%' 
+                       % (epoch, num_epochs, batch_idx, len(train_loader), gener_loss.item(), discr_loss.item(), acc_real, acc_fake))
 
-            # Save generated images
+
+            # Save generated images every 400 batches
             if save_images_dir is not None and not batch_idx % logging_interval:
                 with torch.no_grad():
                     fake_images = model.generator_forward(fixed_noise).detach().cpu()
                     torchvision.utils.save_image(fake_images, 
                                                   f'{save_images_dir}/epoch_{epoch}_batch_{batch_idx}.png', 
                                                   nrow=8, normalize=True)
+        # Save every epoch's accuracy                                                
+        epoch_real_acc /= num_batches
+        epoch_fake_acc /= num_batches
+        log_dict['train_discriminator_real_acc_per_epoch'].append(epoch_real_acc)
+        log_dict['train_discriminator_fake_acc_per_epoch'].append(epoch_fake_acc)
+        plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
+
+        print('Epoch: %03d/%03d | Real Acc/Fake Acc: %.2f%%/%.2f%%' 
+                       % (epoch, num_epochs, epoch_real_acc, epoch_fake_acc))
+    
+        # if save_reports_dir is not None:
+        #     plot_accuracy_per_epoch(log_dict['train_discriminator_real_acc_per_epoch'], log_dict['train_discriminator_fake_acc_per_epoch'], num_epochs, save_reports_dir)
+        
 
         ### Save images for evaluation
         with torch.no_grad():
@@ -136,6 +158,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 custom_labels_list=(' -- Discriminator', ' -- Generator'),
                 save_dir="reports"
             )
+            plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
         if epoch == 20: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -146,6 +173,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 custom_labels_list=(' -- Discriminator', ' -- Generator'),
                 save_dir="reports"
             )
+            plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
         if epoch == 30: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -156,6 +188,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 custom_labels_list=(' -- Discriminator', ' -- Generator'),
                 save_dir="reports"
             )
+            plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
         if epoch == 40: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -166,6 +203,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 custom_labels_list=(' -- Discriminator', ' -- Generator'),
                 save_dir="reports"
             )
+            plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
         if epoch == 50: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -176,6 +218,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 custom_labels_list=(' -- Discriminator', ' -- Generator'),
                 save_dir="reports"
             )
+            plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
     
     print('Total Training Time: %.2f min' % ((time.time() - start_time)/60))
     

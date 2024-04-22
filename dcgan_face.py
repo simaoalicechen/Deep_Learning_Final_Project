@@ -24,7 +24,7 @@ from torchinfo import summary
 from dcgan_model import DCGAN
 from utils import load_dataset, get_dataloaders_celeba, set_all_seeds, set_deterministic
 from helper_train import train_gan_v1
-from helper_plotting import plot_multiple_training_losses, plot_generated_images
+from helper_plotting import plot_multiple_training_losses
 import matplotlib.pyplot as plt
 
 os.makedirs("images", exist_ok=True)
