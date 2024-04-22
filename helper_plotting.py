@@ -80,3 +80,44 @@ def plot_accuracy_per_epoch(real_acc_per_epoch, fake_acc_per_epoch, num_epochs, 
         plt.savefig(os.path.join(save_dir, f"training_acc_{num_epochs}.png"))
     else:
         plt.show()
+
+# May try this later using the same logic with loss plotting
+# this keeps track all batches' acc movements
+def plot_multiple_training_accuracies(acc_list_real, acc_list_fake, num_epochs, save_dir=None):
+    """
+    Plot multiple training accuracies (both real and fake) over epochs.
+
+    Args:
+    - acc_list_real (list of lists): List containing accuracy values for real samples per epoch.
+    - acc_list_fake (list of lists): List containing accuracy values for fake samples per epoch.
+    - num_epochs (int): Total number of epochs.
+    - save_dir (str): Directory to save the plot. If None, the plot will be displayed.
+
+    Returns:
+    None
+    """
+    # if len(acc_list_real) != len(acc_list_fake):
+    #     raise ValueError("The number of lists for real and fake accuracies must be the same.")
+
+    num_lists = len(acc_list_real)
+
+    plt.figure()
+    ax1 = plt.subplot(1, 1, 1)
+
+    for i in range(num_lists):
+        ax1.plot(range(1, num_epochs + 1), acc_list_real[i], label=f"Real Acc List {i+1}")
+        ax1.plot(range(1, num_epochs + 1), acc_list_fake[i], label=f"Fake Acc List {i+1}")
+
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel('Accuracy (%)')
+    ax1.legend()
+
+    plt.title(f"Multiple Training Accuracies in {num_epochs} epochs")
+
+    plt.tight_layout()
+
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_dir, f"training_accuracies_{num_epochs}.png"))
+    else:
+        plt.show()
