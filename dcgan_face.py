@@ -4,9 +4,12 @@ import numpy as np
 import zipfile
 import math
 import torch
+import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from natsort import natsorted
 import torch.nn.functional as F
 from PIL import Image
+import gdown
 from torch.utils.data import Dataset
 from torchvision import transforms
 import torchvision
@@ -18,15 +21,20 @@ from torchvision import datasets
 import torch.nn as nn
 import torch.nn.functional as F
 from torchinfo import summary
-from utils import load_dataset
+from dcgan_model import DCGAN
+from utils import load_dataset, get_dataloaders_celeba, set_all_seeds, set_deterministic
+from helper_train import train_gan_v1
+from helper_plotting import plot_multiple_training_losses, plot_generated_images
 import matplotlib.pyplot as plt
 
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 200, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--n_epochs", type=int, default = 30, help="number of epochs of training")
+parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
+# parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
+# parser.add_argument("--lr", type=float, default=0.01, help="SGD: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
@@ -37,102 +45,160 @@ parser.add_argument("--sample_interval", type=int, default=200, help="interval b
 opt = parser.parse_args()
 print(opt)
 
-cuda = True if torch.cuda.is_available() else False
 
-# DCGAN modification source: https://github.com/joeylitalien/celeba-gan-pytorch/blob/master/src/dcgan.py#L213
-class Generator(nn.Module):
-    def __init__(self, latent_dim):
-        super(Generator, self).__init__()
-
-        # Project and reshape:
-        self.linear = nn.Sequential(
-          nn.Linear(latent_dim, 512*4*4, bias = False),
-          nn.BatchNorm1d(512*4*4),
-          nn.ReLU(inplace=True))
-
-        # Upsample
-        self.features = nn.Sequential(
-          nn.ConvTranspose2d(512, 256, kernel_size = 4, stride = 2, padding=1, bias=False),
-          nn.BatchNorm2d(256), 
-          nn.ReLU(inplace = True),
-          nn.ConvTranspose2d(256, 128, 4, 2, 1, bias=False),
-          nn.BatchNorm2d(128),
-          nn.ReLU(inplace=True),
-          nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=False),
-          nn.BatchNorm2d(64),
-          nn.ReLU(inplace=True),
-          nn.ConvTranspose2d(64, 3, 4, 2, 1, bias=False),
-          nn.Tanh())
-
-    def forward(self, x):
-        x = self.linear(x).view(x.size(0), -1, 4, 4)
-        return self.features(x)
-
-
-class Discriminator(nn.Module):
-    def __init__(self):
-        super(Discriminator, self).__init__()
-
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, 4, 2, 1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 512, 4, 2, 1),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(512, 1, 4, 1))
-
-    def forward(self, x):
-        return self.features(x).view(-1)
-            # x = self.features(x)  
-            # x = x.view(x.size(0), -1)  
-            # x = torch.sigmoid(x) 
-            # return x
-
-    def clip(self, c=0.05):
-        """Weight clipping in (-c, c)"""
-
-        for p in self.parameters():
-            p.data.clamp_(-c, c)
-
-def weights_init_normal(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
-        torch.nn.init.constant_(m.bias.data, 0.0)
-
+# Device
 ngpu = 1
 device = torch.device('cuda:0' if (
     torch.cuda.is_available() and ngpu > 0) else 'cpu')
+cuda = True if torch.cuda.is_available() else False
+RANDOM_SEED = 42
+set_all_seeds(RANDOM_SEED)
 
-# Loss function
-# adversarial_loss = torch.nn.BCELoss()
-# adversarial_loss = F.binary_cross_entropy_with_logits()
-generator = Generator(opt.latent_dim)
-discriminator = Discriminator()
+# DCGAN source: https://github.com/rasbt/stat453-deep-learning-ss21/blob/main/L18/04_02_dcgan-celeba.ipynb  
 
-generator.apply(weights_init_normal)
-discriminator.apply(weights_init_normal)
+class DCGAN(torch.nn.Module):
 
-generator = generator.to(device)
-discriminator = discriminator.to(device)
+    def __init__(self, latent_dim=100, 
+                 num_feat_maps_gen=64, num_feat_maps_dis=64,
+                 color_channels=3):
+        super().__init__()
+        
+        
+        self.generator = nn.Sequential(
+            nn.ConvTranspose2d(latent_dim, num_feat_maps_gen*8, 
+                               kernel_size=4, stride=1, padding=0,
+                               bias=False),
+            nn.BatchNorm2d(num_feat_maps_gen*8),
+            nn.LeakyReLU(inplace=True),
+            #
+            # size if latent_dim=100: num_feat_maps_gen*8 x 4 x 4
+            #
+            nn.ConvTranspose2d(num_feat_maps_gen*8, num_feat_maps_gen*4, 
+                               kernel_size=4, stride=2, padding=1,
+                               bias=False),
+            nn.BatchNorm2d(num_feat_maps_gen*4),
+            nn.LeakyReLU(inplace=True),
+            #
+            # size if latent_dim=100: num_feat_maps_gen*4 x 8 x 8
+            #
+            nn.ConvTranspose2d(num_feat_maps_gen*4, num_feat_maps_gen*2, 
+                               kernel_size=4, stride=2, padding=1,
+                               bias=False),
+            nn.BatchNorm2d(num_feat_maps_gen*2),
+            nn.LeakyReLU(inplace=True),
+            #
+            # size if latent_dim=100: num_feat_maps_gen*2 x 16 x 16
+            #
+            nn.ConvTranspose2d(num_feat_maps_gen*2, num_feat_maps_gen, 
+                               kernel_size=4, stride=2, padding=1,
+                               bias=False),
+            nn.BatchNorm2d(num_feat_maps_gen),
+            nn.LeakyReLU(inplace=True),
+            #
+            # size if latent_dim=100: num_feat_maps_gen x 32 x 32
+            #
+            nn.ConvTranspose2d(num_feat_maps_gen, color_channels, 
+                               kernel_size=4, stride=2, padding=1,
+                               bias=False),
+            #
+            # size: color_channels x 64 x 64
+            #  
+            nn.Tanh()
+        )
 
-if cuda:
-    generator.cuda()
-    discriminator.cuda()
-    # adversarial_loss.cuda()
+        self.discriminator = nn.Sequential(
+                #
+                # input size color_channels x image_height x image_width
+                #
+                nn.Conv2d(color_channels, num_feat_maps_dis,
+                          kernel_size=4, stride=2, padding=1),
+                nn.LeakyReLU(inplace=True),
+                #
+                # size: num_feat_maps_dis x 32 x 32
+                #              
+                nn.Conv2d(num_feat_maps_dis, num_feat_maps_dis*2,
+                          kernel_size=4, stride=2, padding=1,
+                          bias=False),        
+                nn.BatchNorm2d(num_feat_maps_dis*2),
+                nn.LeakyReLU(inplace=True),
+                #
+                # size: num_feat_maps_dis*2 x 16 x 16
+                #   
+                nn.Conv2d(num_feat_maps_dis*2, num_feat_maps_dis*4,
+                          kernel_size=4, stride=2, padding=1,
+                          bias=False),        
+                nn.BatchNorm2d(num_feat_maps_dis*4),
+                nn.LeakyReLU(inplace=True),
+                #
+                # size: num_feat_maps_dis*4 x 8 x 8
+                #   
+                nn.Conv2d(num_feat_maps_dis*4, num_feat_maps_dis*8,
+                          kernel_size=4, stride=2, padding=1,
+                          bias=False),        
+                nn.BatchNorm2d(num_feat_maps_dis*8),
+                nn.LeakyReLU(inplace=True),
+                #
+                # size: num_feat_maps_dis*8 x 4 x 4
+                #   
+                nn.Conv2d(num_feat_maps_dis*8, 1,
+                          kernel_size=4, stride=1, padding=0),
+                
+                # size: 1 x 1 x 1
+                nn.Flatten(),
+                
+            )
 
-# CelebA
-# The custom dataloader codes are from: https://stackoverflow.com/questions/65528568/how-do-i-load-the-celeba-dataset-on-google-colab-using-torch-vision-without-ru
+                
+    def generator_forward(self, z):
+        img = self.generator(z)
+        return img
+        
+    def discriminator_forward(self, img):
+        logits = model.discriminator(img)
+        return logits
 
-data_root = 'data/celebA'
+
+model = DCGAN()
+model.to(device)
+
+# With Adam, good results
+optim_gen = torch.optim.Adam(model.generator.parameters(),
+                             betas=(opt.b1, opt.b2),
+                             lr=opt.lr)
+
+optim_discr = torch.optim.Adam(model.discriminator.parameters(),
+                               betas=(opt.b1, opt.b2),
+                               lr=opt.lr)
+
+# With SGD and CosineAnnealingLR, at least, initially, it was bad: gradiant vanishing in Dis
+"""
+Mostly noisy pictures
+torch.Size([128, 3, 64, 64])
+Epoch: 001/030 | Batch 000/1272 | Gen/Dis Loss: 1.5112/0.7281
+Epoch: 001/030 | Batch 025/1272 | Gen/Dis Loss: 46.0621/1.3114
+Epoch: 001/030 | Batch 050/1272 | Gen/Dis Loss: 107.7352/0.7285
+Epoch: 001/030 | Batch 075/1272 | Gen/Dis Loss: 67.2650/0.0029
+Epoch: 001/030 | Batch 100/1272 | Gen/Dis Loss: 37.9752/0.0000
+Epoch: 001/030 | Batch 125/1272 | Gen/Dis Loss: 54.6652/0.0593
+Epoch: 001/030 | Batch 150/1272 | Gen/Dis Loss: 37.9497/0.0000
+Epoch: 001/030 | Batch 175/1272 | Gen/Dis Loss: 25.4828/0.0000
+Epoch: 001/030 | Batch 200/1272 | Gen/Dis Loss: 20.4135/0.0000
+Epoch: 001/030 | Batch 225/1272 | Gen/Dis Loss: 17.4199/0.0029
+Epoch: 001/030 | Batch 250/1272 | Gen/Dis Loss: 98.9853/0.0205
+Epoch: 001/030 | Batch 275/1272 | Gen/Dis Loss: 38.9305/0.0991
+Epoch: 001/030 | Batch 300/1272 | Gen/Dis Loss: 34.4951/0.0000
+Epoch: 001/030 | Batch 325/1272 | Gen/Dis Loss: 31.7266/0.0001
+Epoch: 001/030 | Batch 350/1272 | Gen/Dis Loss: 25.9539/0.0000
+"""
+# optim_gen = optim.SGD(model.generator.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
+# optim_discr = optim.SGD(model.discriminator.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
+
+# the learning rate scheduler
+# scheduler = CosineAnnealingLR(optim_gen, T_max=200)
+
+
+# download the data directly
+data_root = 'data/celeba'
 dataset_folder = f'{data_root}'
 transform = transforms.Compose([
     transforms.Resize((64, 64)),  # Resize images to 64x64
@@ -140,89 +206,81 @@ transform = transforms.Compose([
     transforms.ToTensor(),  # Convert images to PyTorch tensors
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize tensors
 ])
-celeba_dataset = ImageFolder(root=data_root,
-            transform=transform)
+# celeba_dataset = ImageFolder(root=data_root,
+#             transform=transform)
 
-dataloader = DataLoader(celeba_dataset, batch_size=32, shuffle=True, num_workers=4)
+# dataloader = DataLoader(celeba_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=4)
+train_loader, valid_loader, test_loader = get_dataloaders_celeba(
+    batch_size=opt.batch_size,
+    train_transforms=transform,
+    test_transforms=transform,
+    num_workers=4)
 
-print("length of celeba_dataloader", len(dataloader))
+# check the data
+print("length of train_loader", len(train_loader))
+print("length of valid_loader", len(valid_loader))
+print("length of test_loader", len(test_loader))
+
 n = 0
-dataiter = iter(dataloader)
+dataiter = iter(train_loader)
 images, labels = next(dataiter)
-print(type(images))  # Check if it's a tensor or a list
+# check if it's a tensor or a list
+print(type(images))  
 print(images[:2])
-print(images.shape)  # Should only contain images
-
-
-# Optimizers
-optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-criterion = nn.BCELoss()
+print(images.shape)
 
 os.makedirs("real_images", exist_ok=True)
-for epoch in range(opt.n_epochs):
-    for i, (images, attributes) in enumerate(dataloader):
-        # Save the first 10 batches of images
-        # if i < 5:
-        #     # Save the images
-        #     torchvision.utils.save_image(images, f"real_images/batch_{i}.png", nrow=8, normalize=True)
-        #     print(f"Batch {i} of real images saved.")
-        # else:
-        #     break  # Stop after saving 10 batches
-            # print(images.shape)
-            # print(attributes.shape)
-        real_images = images.to(device)
-        batch_size = real_images.size(0)
-        # Create labels
-        real_labels = torch.ones(batch_size).to(device)
-        fake_labels = torch.zeros(batch_size).to(device)
-        # -----------------
-        #  Train Generator
-        # -----------------
 
-        optimizer_G.zero_grad()
+# plot configuration
+plt.figure(figsize=(8, 8))
+plt.axis("off")
+plt.title("Training Images")
+plt.imshow(np.transpose(torchvision.utils.make_grid(images[:64], padding=2, normalize=True), (1, 2, 0)))
 
-        # Loss for real images
-        outputs = discriminator(real_images)
-        d_loss_real = F.binary_cross_entropy_with_logits(outputs, real_labels)
-        real_score = outputs
+# save the plot as a PNG file in the "real_images" folder, check if the input looks good
+plt.savefig("real_images/training_images.png")
 
-        # Loss for fake images
-        z = torch.randn(batch_size, 100).to(device)  # 100 is the size of the latent vector
-        fake_images = generator(z)
-        outputs = discriminator(fake_images.detach())
-        d_loss_fake = F.binary_cross_entropy_with_logits(outputs, fake_labels)
-        fake_score = outputs
+# show the plot
+plt.show()
 
-        # Combine losses
-        d_loss = d_loss_real + d_loss_fake
-        d_loss.backward()
-        optimizer_D.step()
+# Training function source: https://github.com/rasbt/stat453-deep-learning-ss21/blob/main/L18/helper_train.py 
+log_dict = train_gan_v1(num_epochs=opt.n_epochs, model = model,
+                        optimizer_gen = optim_gen,
+                        optimizer_discr = optim_discr,
+                        latent_dim=opt.latent_dim,
+                        device=device, 
+                        train_loader=train_loader,
+                        logging_interval= 200,
+                        save_model='gan_celeba_01.pt', 
+                        save_images_dir="images", 
+                        lr_scheduler= None)
 
-        # =============================================
-        # Train Generator: min log(1 - D(G(z))) <-> max log(D(G(z)))
-        # =============================================
-        optimizer_G.zero_grad()
-        
-        # Loss for fake images
-        outputs = discriminator(fake_images)
-        g_loss = F.binary_cross_entropy_with_logits(outputs, real_labels)
+plot_multiple_training_losses(
+    losses_list=(
+        log_dict['train_discriminator_loss_per_batch'],
+        log_dict['train_generator_loss_per_batch']
+    ),
+    num_epochs=NUM_EPOCHS,
+    custom_labels_list=(' -- Discriminator', ' -- Generator'),
+    save_dir="reports"
+)
 
-        g_loss.backward()
-        optimizer_G.step()
+# create "images" folder at the same level
+os.makedirs("images", exist_ok=True)
 
-        if (i + 1) % 100 == 0:
-            print(f'Epoch [{epoch+1}/{opt.n_epochs}], Step [{i+1}/{len(dataloader)}], '
-                  f'D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}, '
-                  f'D(x): {real_score.mean().item():.2f}, D(G(z)): {fake_score.mean().item():.2f}')
-        
-        if i % opt.sample_interval == 0:
-            # with torch.no_grad():
-            # sample_images = generator(fixed_noise).detach().cpu()
-            fake_images = fake_images.detach().cpu()
-            img_grid = torchvision.utils.make_grid(fake_images, nrow=5, normalize=True)
-            torchvision.utils.save_image(img_grid, f"images/epoch_{epoch}_batch_{i}.png")
-            plt.figure(figsize=(10,10))
-            plt.imshow(np.transpose(img_grid.numpy(), (1, 2, 0)))
-            plt.axis('off')
-            plt.show()
+# save images generated at epoch intervals
+for i in range(0, NUM_EPOCHS, 5):
+    plt.figure(figsize=(8, 8))
+    plt.axis('off')
+    plt.title(f'Generated images at epoch {i}')
+    plt.imshow(np.transpose(log_dict['images_from_noise_per_epoch'][i], (1, 2, 0)))
+    plt.savefig(f"images/generated_images_epoch_{i}.png")
+    plt.close()  # Close the figure to free up memory
+
+# Save images generated after the last epoch
+plt.figure(figsize=(8, 8))
+plt.axis('off')
+plt.title(f'Generated images after last epoch')
+plt.imshow(np.transpose(log_dict['images_from_noise_per_epoch'][-1], (1, 2, 0)))
+plt.savefig("images/generated_images_last_epoch.png")
+plt.close()  # Close the figure to free up memory
