@@ -1,6 +1,4 @@
-from helper_evaluate import compute_accuracy
-from helper_evaluate import compute_epoch_loss_classifier
-from helper_evaluate import compute_epoch_loss_autoencoder
+import os
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import time
@@ -8,12 +6,16 @@ import torch
 import torch.nn.functional as F
 import torchvision
 import torch.autograd
+from helper_plotting import plot_multiple_training_losses
+# from helper_evaluate import compute_accuracy
+# from helper_evaluate import compute_epoch_loss_classifier
+# from helper_evaluate import compute_epoch_loss_autoencoder
 
 def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr, 
                  latent_dim, device, train_loader, loss_fn=None,
                  logging_interval=200, 
                  save_model=None, save_images_dir = None, lr_scheduler=None):
-
+    num_epochs += 1
     log_dict = {'train_generator_loss_per_batch': [],
                 'train_discriminator_loss_per_batch': [],
                 'train_discriminator_real_acc_per_batch': [],
@@ -26,8 +28,8 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
     fixed_noise = torch.randn(64, latent_dim, 1, 1, device=device)
 
     start_time = time.time()
-    for epoch in range(num_epochs):
-
+    for epoch in range(1, num_epochs):
+        print(epoch)
 
         model.train()
         for batch_idx, (features, _) in enumerate(train_loader):
@@ -120,11 +122,62 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
 
 
         print('Time elapsed: %.2f min' % ((time.time() - start_time)/60))
+
+        if save_model is not None:
+            torch.save(model.state_dict(), save_model)
+            os.makedirs("reports", exist_ok=True)
+        if epoch == 1: 
+            plot_multiple_training_losses(
+                losses_list=(
+                    log_dict['train_discriminator_loss_per_batch'],
+                    log_dict['train_generator_loss_per_batch']
+                ),
+                num_epochs= epoch,
+                custom_labels_list=(' -- Discriminator', ' -- Generator'),
+                save_dir="reports"
+            )
+        if epoch == 20: 
+            plot_multiple_training_losses(
+                losses_list=(
+                    log_dict['train_discriminator_loss_per_batch'],
+                    log_dict['train_generator_loss_per_batch']
+                ),
+                num_epochs= epoch,
+                custom_labels_list=(' -- Discriminator', ' -- Generator'),
+                save_dir="reports"
+            )
+        if epoch == 30: 
+            plot_multiple_training_losses(
+                losses_list=(
+                    log_dict['train_discriminator_loss_per_batch'],
+                    log_dict['train_generator_loss_per_batch']
+                ),
+                num_epochs= epoch,
+                custom_labels_list=(' -- Discriminator', ' -- Generator'),
+                save_dir="reports"
+            )
+        if epoch == 40: 
+            plot_multiple_training_losses(
+                losses_list=(
+                    log_dict['train_discriminator_loss_per_batch'],
+                    log_dict['train_generator_loss_per_batch']
+                ),
+                num_epochs= epoch,
+                custom_labels_list=(' -- Discriminator', ' -- Generator'),
+                save_dir="reports"
+            )
+        if epoch == 50: 
+            plot_multiple_training_losses(
+                losses_list=(
+                    log_dict['train_discriminator_loss_per_batch'],
+                    log_dict['train_generator_loss_per_batch']
+                ),
+                num_epochs= epoch,
+                custom_labels_list=(' -- Discriminator', ' -- Generator'),
+                save_dir="reports"
+            )
     
     print('Total Training Time: %.2f min' % ((time.time() - start_time)/60))
-    
-    if save_model is not None:
-        torch.save(model.state_dict(), save_model)
     
     return log_dict
 

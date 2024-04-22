@@ -4,9 +4,8 @@ import torch
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-import os
-
 def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=100, custom_labels_list=None, save_dir=None):
+    print("num_epochs", num_epochs)
     for i,_ in enumerate(losses_list):
         if not len(losses_list[i]) == len(losses_list[0]):
             raise ValueError('All loss tensors need to have the same number of elements.')
@@ -37,7 +36,7 @@ def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=
     ###################
     # Set second x-axis
     ax2 = ax1.twiny()
-    newlabel = list(range(num_epochs+1))
+    newlabel = list(range(num_epochs))
 
     newpos = [e*iter_per_epoch for e in newlabel]
 
@@ -53,14 +52,32 @@ def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=
 
     plt.tight_layout()
 
+    # script_dir = os.path.dirname(os.path.abspath(__file__))
+    # reports_dir = os.path.join(script_dir, "reports") 
+
     # If save_dir is provided, save the plot to the specified directory
     if save_dir:
-        os.makedirs(save_dir, exist_ok=True)
-        plt.savefig(os.path.join(save_dir, "training_losses.png"))
+        # save_path = os.path.join(reports_dir, save_dir)
+        os.makedirs(save_dir, exist_ok=True)  # Ensure that the directory exists or create it
+        plt.savefig(os.path.join(save_dir, f"training_losses_{num_epochs}.png"))
     else:
         plt.show()
 
+def plot_discriminator_loss(losses, save_dir):
+    plt.figure()
+    plt.plot(losses, label='Discriminator Loss')
+    plt.xlabel('Iterations')
+    plt.ylabel('Loss')
+    plt.title('Discriminator Loss Curve')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
 
+    # Create the reports directory if it doesn't exist
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Save the plot as a PNG file
+    plt.savefig(os.path.join(save_dir, 'discriminator_loss.png'))
 
 def plot_generated_images(data_loader, model, device, 
                           unnormalizer=None,

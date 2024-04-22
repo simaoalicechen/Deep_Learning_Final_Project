@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 30, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default = 50, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
@@ -250,17 +250,19 @@ log_dict = train_gan_v1(num_epochs=opt.n_epochs, model = model,
                         latent_dim=opt.latent_dim,
                         device=device, 
                         train_loader=train_loader,
-                        logging_interval= 200,
+                        logging_interval= 400,
                         save_model='gan_celeba_01.pt', 
                         save_images_dir="images", 
                         lr_scheduler= None)
-
+                        
+# os.makedirs("reports", exist_ok=True)
 plot_multiple_training_losses(
     losses_list=(
         log_dict['train_discriminator_loss_per_batch'],
         log_dict['train_generator_loss_per_batch']
     ),
-    num_epochs=NUM_EPOCHS,
+    num_epochs = opt.n_epochs,
+    averaging_iterations=100,
     custom_labels_list=(' -- Discriminator', ' -- Generator'),
     save_dir="reports"
 )
