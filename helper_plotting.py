@@ -48,7 +48,7 @@ def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=
     ax2.spines['bottom'].set_position(('outward', 45))
     ax2.set_xlabel('Epochs')
     ax2.set_xlim(ax1.get_xlim())
-    plt.title(f'Multiple Training Losses in {num_epochs} epochs')
+    plt.title(f'Multiple Training Losses at epoch {num_epochs}')
     ###################
 
     plt.tight_layout()
@@ -83,41 +83,30 @@ def plot_accuracy_per_epoch(real_acc_per_epoch, fake_acc_per_epoch, num_epochs, 
 
 # May try this later using the same logic with loss plotting
 # this keeps track all batches' acc movements
-def plot_multiple_training_accuracies(acc_list_real, acc_list_fake, num_epochs, save_dir=None):
+def plot_multiple_training_accuracies(real_accuracies, fake_accuracies, num_epochs, save_dir):
     """
-    Plot multiple training accuracies (both real and fake) over epochs.
+    Plot the accuracies of discriminator on real and fake data per batch.
 
-    Args:
-    - acc_list_real (list of lists): List containing accuracy values for real samples per epoch.
-    - acc_list_fake (list of lists): List containing accuracy values for fake samples per epoch.
-    - num_epochs (int): Total number of epochs.
-    - save_dir (str): Directory to save the plot. If None, the plot will be displayed.
-
-    Returns:
-    None
+    Parameters:
+        real_accuracies (list): List of accuracies for real data per batch.
+        fake_accuracies (list): List of accuracies for fake data per batch.
+        num_epochs (int): Current epoch number to indicate in the plot title.
+        save_dir (str): Directory where the plot will be saved.
     """
-    # if len(acc_list_real) != len(acc_list_fake):
-    #     raise ValueError("The number of lists for real and fake accuracies must be the same.")
-
-    num_lists = len(acc_list_real)
-
-    plt.figure()
-    ax1 = plt.subplot(1, 1, 1)
-
-    for i in range(num_lists):
-        ax1.plot(range(1, num_epochs + 1), acc_list_real[i], label=f"Real Acc List {i+1}")
-        ax1.plot(range(1, num_epochs + 1), acc_list_fake[i], label=f"Fake Acc List {i+1}")
-
-    ax1.set_xlabel('Epochs')
-    ax1.set_ylabel('Accuracy (%)')
-    ax1.legend()
-
-    plt.title(f"Multiple Training Accuracies in {num_epochs} epochs")
-
+    plt.figure(figsize=(10, 5))
+    plt.plot(real_accuracies, label='Real Data Accuracy', color='green', linestyle='-', marker='o')
+    plt.plot(fake_accuracies, label='Fake Data Accuracy', color='red', linestyle='-', marker='x')
+    plt.title(f'Batch-wise Discriminator Accuracies at Epoch {num_epochs}')
+    plt.xlabel('Batch Number')
+    plt.ylabel('Accuracy (%)')
+    plt.legend()
+    plt.grid(True)
     plt.tight_layout()
-
+    
+    # Save the plot to a file
+    filename = f'discriminator_accuracies_epoch_{num_epochs}.png'
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
-        plt.savefig(os.path.join(save_dir, f"training_accuracies_{num_epochs}.png"))
-    else:
-        plt.show()
+        plt.savefig(os.path.join(save_dir, filename))
+    plt.close() 
+    print(f"Plot saved as {filename}")

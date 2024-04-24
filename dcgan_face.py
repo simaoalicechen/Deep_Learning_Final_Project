@@ -24,7 +24,7 @@ from torchinfo import summary
 from dcgan_model import DCGAN
 from utils import load_dataset, get_dataloaders_celeba, set_all_seeds, set_deterministic
 from helper_train import train_gan_v1
-from helper_plotting import plot_multiple_training_losses
+from helper_plotting import plot_multiple_training_losses, plot_multiple_training_accuracies, plot_accuracy_per_epoch, plot_multiple_training_accuracies
 import matplotlib.pyplot as plt
 
 os.makedirs("images", exist_ok=True)
@@ -266,6 +266,18 @@ plot_multiple_training_losses(
     custom_labels_list=(' -- Discriminator', ' -- Generator'),
     save_dir="reports"
 )
+
+plot_accuracy_per_epoch(
+                log_dict['train_discriminator_real_acc_per_epoch'], 
+                log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = opt.n_epochs, 
+                save_dir = "reports")
+
+plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
+                num_epochs = opt.n_epochs, 
+                save_dir = "reports")
 
 # create "images" folder at the same level
 os.makedirs("images", exist_ok=True)

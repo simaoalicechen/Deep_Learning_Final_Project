@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 import torchvision
 import torch.autograd
-from helper_plotting import plot_multiple_training_losses, plot_accuracy_per_epoch
+from helper_plotting import plot_multiple_training_losses, plot_accuracy_per_epoch, plot_multiple_training_accuracies
 
 def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr, 
                  latent_dim, device, train_loader, loss_fn=None,
@@ -34,6 +34,8 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
         print(epoch)
         epoch_real_acc = 0.0  # Initialize epoch_real_acc here
         epoch_fake_acc = 0.0  # Initialize epoch_fake_acc here
+        batch_real_acc_list = []
+        batch_fake_acc_list = []
         num_batches = len(train_loader)
         model.train()
         for batch_idx, (features, _) in enumerate(train_loader):
@@ -101,6 +103,9 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
             acc_fake = (predicted_labels_fake == fake_labels).float().mean().item() * 100.0
             log_dict['train_discriminator_real_acc_per_batch'].append(acc_real)
             log_dict['train_discriminator_fake_acc_per_batch'].append(acc_fake) 
+            batch_real_acc_list.append(acc_real)
+            batch_fake_acc_list.append(acc_fake)
+
             
             epoch_real_acc += acc_real
             epoch_fake_acc += acc_fake
@@ -126,6 +131,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
         plot_accuracy_per_epoch(
                 log_dict['train_discriminator_real_acc_per_epoch'], 
                 log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
+        plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
                 num_epochs = epoch, 
                 save_dir = "reports")
 
@@ -163,6 +173,12 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 log_dict['train_discriminator_fake_acc_per_epoch'], 
                 num_epochs = epoch, 
                 save_dir = "reports")
+            plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
+            
         if epoch == 20: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -176,6 +192,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
             plot_accuracy_per_epoch(
                 log_dict['train_discriminator_real_acc_per_epoch'], 
                 log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
+            plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
                 num_epochs = epoch, 
                 save_dir = "reports")
         if epoch == 30: 
@@ -193,6 +214,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 log_dict['train_discriminator_fake_acc_per_epoch'], 
                 num_epochs = epoch, 
                 save_dir = "reports")
+            plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
         if epoch == 40: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -208,6 +234,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
                 log_dict['train_discriminator_fake_acc_per_epoch'], 
                 num_epochs = epoch, 
                 save_dir = "reports")
+            plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
         if epoch == 50: 
             plot_multiple_training_losses(
                 losses_list=(
@@ -221,6 +252,11 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
             plot_accuracy_per_epoch(
                 log_dict['train_discriminator_real_acc_per_epoch'], 
                 log_dict['train_discriminator_fake_acc_per_epoch'], 
+                num_epochs = epoch, 
+                save_dir = "reports")
+            plot_multiple_training_accuracies(
+                log_dict['train_discriminator_real_acc_per_batch'], 
+                log_dict['train_discriminator_fake_acc_per_batch'], 
                 num_epochs = epoch, 
                 save_dir = "reports")
     
