@@ -32,8 +32,8 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
     start_time = time.time()
     for epoch in range(1, num_epochs+1):
         print(epoch)
-        epoch_real_acc = 0.0  # Initialize epoch_real_acc here
-        epoch_fake_acc = 0.0  # Initialize epoch_fake_acc here
+        epoch_real_acc = 0.0 
+        epoch_fake_acc = 0.0  
         batch_real_acc_list = []
         batch_fake_acc_list = []
         num_batches = len(train_loader)
@@ -128,17 +128,6 @@ def train_gan_v1(num_epochs, model, optimizer_gen, optimizer_discr,
         epoch_fake_acc /= num_batches
         log_dict['train_discriminator_real_acc_per_epoch'].append(epoch_real_acc)
         log_dict['train_discriminator_fake_acc_per_epoch'].append(epoch_fake_acc)
-        plot_accuracy_per_epoch(
-                log_dict['train_discriminator_real_acc_per_epoch'], 
-                log_dict['train_discriminator_fake_acc_per_epoch'], 
-                num_epochs = epoch, 
-                save_dir = "reports")
-        plot_multiple_training_accuracies(
-                log_dict['train_discriminator_real_acc_per_batch'], 
-                log_dict['train_discriminator_fake_acc_per_batch'], 
-                num_epochs = epoch, 
-                save_dir = "reports")
-
         print('Epoch: %03d/%03d | Real Acc/Fake Acc: %.2f%%/%.2f%%' 
                        % (epoch, num_epochs, epoch_real_acc, epoch_fake_acc))
     
