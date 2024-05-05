@@ -190,26 +190,16 @@ Epoch: 001/030 | Batch 300/1272 | Gen/Dis Loss: 34.4951/0.0000
 Epoch: 001/030 | Batch 325/1272 | Gen/Dis Loss: 31.7266/0.0001
 Epoch: 001/030 | Batch 350/1272 | Gen/Dis Loss: 25.9539/0.0000
 """
-# optim_gen = optim.SGD(model.generator.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
-# optim_discr = optim.SGD(model.discriminator.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
-
-# the learning rate scheduler
-# scheduler = CosineAnnealingLR(optim_gen, T_max=200)
-
-
 # download the data directly
 data_root = 'data/celeba'
 dataset_folder = f'{data_root}'
 transform = transforms.Compose([
-    transforms.Resize((64, 64)),  # Resize images to 64x64
-    transforms.CenterCrop((64, 64)),  # Crop to remove unwanted borders
-    transforms.ToTensor(),  # Convert images to PyTorch tensors
+    transforms.Resize((64, 64)), 
+    transforms.CenterCrop((64, 64)),  
+    transforms.ToTensor(), 
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize tensors
 ])
-# celeba_dataset = ImageFolder(root=data_root,
-#             transform=transform)
 
-# dataloader = DataLoader(celeba_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=4)
 train_loader, valid_loader, test_loader = get_dataloaders_celeba(
     batch_size=opt.batch_size,
     train_transforms=transform,
@@ -279,7 +269,6 @@ plot_multiple_training_accuracies(
                 num_epochs = opt.n_epochs, 
                 save_dir = "reports")
 
-# create "images" folder at the same level
 os.makedirs("images", exist_ok=True)
 
 # save images generated at epoch intervals

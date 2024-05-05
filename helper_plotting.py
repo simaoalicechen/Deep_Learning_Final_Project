@@ -53,10 +53,6 @@ def plot_multiple_training_losses(losses_list, num_epochs, averaging_iterations=
 
     plt.tight_layout()
 
-    # script_dir = os.path.dirname(os.path.abspath(__file__))
-    # reports_dir = os.path.join(script_dir, "reports") 
-
-    # If save_dir is provided, save the plot to the specified directory
     if save_dir:
         # save_path = os.path.join(reports_dir, save_dir)
         os.makedirs(save_dir, exist_ok=True)  # Ensure that the directory exists or create it
@@ -76,13 +72,11 @@ def plot_accuracy_per_epoch(real_acc_per_epoch, fake_acc_per_epoch, num_epochs, 
     plt.tight_layout()
     if save_dir:
         # save_path = os.path.join(reports_dir, save_dir)
-        os.makedirs(save_dir, exist_ok=True)  # Ensure that the directory exists or create it
+        os.makedirs(save_dir, exist_ok=True)  
         plt.savefig(os.path.join(save_dir, f"training_acc_{num_epochs}.png"))
     else:
         plt.show()
 
-# May try this later using the same logic with loss plotting
-# this keeps track all batches' acc movements
 def plot_multiple_training_accuracies(real_accuracies, fake_accuracies, num_epochs, save_dir):
     """
     Plot the accuracies of discriminator on real and fake data per batch.
