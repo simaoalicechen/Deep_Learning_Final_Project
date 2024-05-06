@@ -57,6 +57,9 @@ RANDOM_SEED = 42
 set_all_seeds(RANDOM_SEED) 
 
 img_shape = (opt.channels, opt.img_size, opt.img_size)
+
+# This architecture codes are from: https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/wgan_gp/wgan_gp.py
+
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()

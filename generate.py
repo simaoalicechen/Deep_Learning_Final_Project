@@ -57,6 +57,7 @@ set_all_seeds(RANDOM_SEED)
 ssl._create_default_https_context = ssl._create_unverified_context
 use_gpu = True if torch.cuda.is_available() else False
 
+# the pretrained model is from: https://github.com/facebookresearch/pytorch_GAN_zoo
 model = torch.hub.load('facebookresearch/pytorch_GAN_zoo:hub', 'DCGAN', pretrained=True, useGPU=use_gpu)
 
 # optimizer
