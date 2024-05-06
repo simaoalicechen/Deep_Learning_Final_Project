@@ -150,17 +150,20 @@ criterion = nn.BCEWithLogitsLoss()
 
 os.makedirs("reportWGAN", exist_ok=True)
 
+# define parameters for metrics and graphs
+all_d_losses, all_g_losses = [], []
+all_real_scores, all_fake_scores = [], []
+all_real_accs, all_fake_accs = [], []
 
-# # training loop
+threshold = 0.5
 # training loop
 for epoch in range(opt.n_epochs):
-    total_d_loss = 0.0
-    total_g_loss = 0.0
+    d_losses, g_losses = [], []
+    real_scores, fake_scores = [], []
+    real_accs, fake_accs = [], []
     num_batches = 0
     start_time = time.time()
     for i, (real_images, _) in enumerate(train_loader):
-        d_loss = 0.0
-        g_loss = 0.0
         real_images = real_images.to(device)
         batch_size = real_images.size(0)
 
@@ -175,8 +178,19 @@ for epoch in range(opt.n_epochs):
         real_output = discriminator(real_images).view(-1)
         fake_output = discriminator(fake_images).view(-1)
 
+        real_score = torch.sigmoid(real_output).mean().item()
+        fake_score = torch.sigmoid(fake_output).mean().item()
+        real_scores.append(real_score)
+        fake_scores.append(fake_score)
+
+        real_acc = (torch.sigmoid(real_output).round().cpu().detach().numpy() == 1).mean()
+        fake_acc = (torch.sigmoid(fake_output).round().cpu().detach().numpy() == 0).mean()
+        real_accs.append(real_acc)
+        fake_accs.append(fake_acc)
+
         # calculate loss for discriminator
         d_loss = -(torch.mean(real_output) - torch.mean(fake_output))
+        d_losses.append(d_loss.item())
 
         # update discriminator weights
         d_loss.backward()
@@ -204,24 +218,39 @@ for epoch in range(opt.n_epochs):
             g_loss.backward()
             optimizer_G.step()
 
-        # Print batch loss metrics
-        print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {d_loss:.6f}] [G loss: {g_loss:.6f}]")
+        g_losses.append(g_loss.item())
+        # Print batch loss, discriminator scores, and accuracy
+        print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
+              f"[D loss: {d_loss.item():.6f}] [G loss: {g_loss.item():.6f}] "
+              f"[D's scores on real images: {real_score:.6f}] [fake score: {fake_score:.6f}] "
+              f"[D's accuracies on real images: {real_acc:.4%}] [fake images: {fake_acc:.4%}]")
 
-        # Accumulate loss values
-        total_d_loss += d_loss
-        total_g_loss += g_loss
-        num_batches += 1
+    # calculate average loss and scores for the current epoch
+    epoch_d_loss = sum(d_losses) / len(d_losses)
+    epoch_g_loss = sum(g_losses) / len(g_losses)
+    epoch_real_score = sum(real_scores) / len(real_scores)
+    epoch_fake_score = sum(fake_scores) / len(fake_scores)
+    epoch_real_acc = sum(real_accs)/len(real_accs)
+    epoch_fake_acc = sum(fake_accs)/len(fake_accs)
 
-    # Calculate average loss for the epoch
-    avg_d_loss = total_d_loss / num_batches
-    avg_g_loss = total_g_loss / num_batches
+    # calculate accuracy rates for discriminator detecting real and fake images
+    # real_acc = (torch.sigmoid(discriminator(images)).round().cpu().detach().numpy() == 1).mean()
+    # fake_acc = (torch.sigmoid(discriminator(fake_images)).round().cpu().detach().numpy() == 0).mean()
+
+    # store epoch metrics data
+    all_d_losses.append(epoch_d_loss)
+    all_g_losses.append(epoch_g_loss)
+    all_real_scores.append(epoch_real_score)
+    all_fake_scores.append(epoch_fake_score)
+    all_real_accs.append(epoch_real_acc)
+    all_fake_accs.append(epoch_fake_acc)
 
     # Output training stats for the epoch
-    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Avg D loss: {avg_d_loss:.6f}] [Avg G loss: {avg_g_loss:.6f}]")
+    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
+            f"[D loss: {epoch_d_loss:.6f}] [G loss: {epoch_g_loss:.6f}] "
+            f"[D's epoch mean scores on real images: {epoch_real_score:.6f}] [fake images: {epoch_fake_score:.6f}] "
+            f"[D's epoch mean accuracies on real images: {epoch_real_acc:.4%}] [fake images: {epoch_fake_acc:.4%}]")
 
-    # Reset total loss for the next epoch
-    total_d_loss = 0.0
-    total_g_loss = 0.0
 
     # End timer for epoch
     end_time = time.time()
@@ -238,88 +267,52 @@ for epoch in range(opt.n_epochs):
         plt.savefig(os.path.join("reportWGAN", f"epoch_{epoch+1}_generated_images.png"))
         plt.close()
 
+    # Define the directory path
+    directoryL = "reportWGAN/losses"
+    directoryS = "reportWGAN/scores"
+    directoryA = "reportWGAN/accuracies"
 
+    # Create the directory if it doesn't exist
+    if not os.path.exists(directoryL):
+        os.makedirs(directoryL)
+    if not os.path.exists(directoryA):
+        os.makedirs(directoryA)
+    if not os.path.exists(directoryS):
+        os.makedirs(directoryS)
 
+    if (epoch+1) in [1, 10, 30, 50]:
+        # Plot and save the losses graph
+        plt.figure(figsize=(10, 5))
+        plt.plot(all_d_losses, label='Discriminator Loss')
+        plt.plot(all_g_losses, label='Generator Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Discriminator and Generator Losses')
+        plt.legend()
+        plt.savefig(os.path.join("reportWGAN/losses", f"losses_graph_epoch_{epoch+1}.png"))
+        plt.close()
 
-# for epoch in range(opt.n_epochs):
-#     total_d_loss = 0.0
-#     total_g_loss = 0.0
-#     num_batches = 0
-#     start_time = time.time()
-#     for i, (real_images, _) in enumerate(train_loader):
-#         d_loss = 0.0
-#         g_loss = 0.0
-#         real_images = real_images.to(device)
-#         batch_size = real_images.size(0)
+        # Plot and save the accuracies graph
+        plt.figure(figsize=(10, 5))
+        plt.plot(all_real_accs, label='Real Image Accuracy')
+        plt.plot(all_fake_accs, label='Fake Image Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracies')
+        plt.title("Discriminator's Accuracies of Real and Fake Images")
+        plt.legend()
+        plt.savefig(os.path.join("reportWGAN/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
+        plt.close()
 
-#         # train discriminator
-#         optimizer_D.zero_grad()
-
-#         # generate fake images
-#         z = torch.randn(batch_size, opt.latent_dim, device=device)
-#         fake_images = generator(z).detach()
-
-#         # calculate discriminator outputs for real and fake images
-#         real_output = discriminator(real_images).view(-1)
-#         fake_output = discriminator(fake_images).view(-1)
-
-#         # calculate loss for discriminator
-#         d_loss = -(torch.mean(real_output) - torch.mean(fake_output))
-
-#         # update discriminator weights
-#         d_loss.backward()
-#         optimizer_D.step()
-
-#         # clip discriminator weights
-#         for param in discriminator.parameters():
-#             param.data.clamp_(-0.01, 0.01)
-
-#         # train generator every n_critic iterations
-#         if i % opt.n_critic == 0:
-#             optimizer_G.zero_grad()
-
-#             # generate fake images
-#             z = torch.randn(batch_size, opt.latent_dim, device=device)
-#             fake_images = generator(z).detach()
-
-#             # calculate discriminator output for fake images
-#             fake_output = discriminator(fake_images).view(-1)
-
-#             # calculate loss for generator
-#             g_loss = -torch.mean(fake_output)
-
-#             # update generator weights
-#             g_loss.backward()
-#             optimizer_G.step()
-
-#         # # Output training stats
-#         # if i % opt.sample_interval == 0:
-#         #     print(
-#         #         f"[Epoch {epoch}/{opt.n_epochs}] [Batch {i}/{len(train_loader)}] [D loss: {d_loss.item():.6f}] [G loss: {g_loss.item():.6f}]"
-#         #     )
-#         # Accumulate loss values
-#     total_d_loss += d_loss
-#     total_g_loss += g_loss
-#     num_batches += 1
-#     # output training stats for each epoch
-#     avg_d_loss = total_d_loss / len(train_loader)
-#     avg_g_loss = total_g_loss / len(train_loader)
-#     print(f"[Epoch {epoch+1}/{opt.n_epochs}] [D loss: {avg_d_loss:.6f}] [G loss: {avg_g_loss:.6f}]")
-
-#     # reset total loss for the next epoch
-#     total_d_loss = 0.0
-#     total_g_loss = 0.0
-
-#     # End timer for epoch
-#     end_time = time.time()
-#     elapsed_time = end_time - start_time
-#     elapsed_minutes = elapsed_time / 60.0
-#     print(f"Epoch {epoch+1} took {elapsed_minutes:.2f} minutes.")
-
-#     with torch.no_grad():
-#         noise = torch.randn(batch_size, opt.latent_dim).to(device)
-#         fake = generator(noise).detach().cpu()
-#         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
-#         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-#         plt.savefig(os.path.join("reportWGAN", f"epoch_{epoch+1}_generated_images.png"))
-#         plt.close()
+        # Plot and save the discriminator scores graph
+        # Note: You need to collect discriminator scores during training
+        # and then plot them in a similar way as losses and accuracies.
+        # For simplicity, I'll assume you have stored the scores in a list called "discriminator_scores"
+        plt.figure(figsize=(10, 5))
+        plt.plot(all_real_scores, label='real image Scores')
+        plt.plot(all_fake_scores, label='fake image Scores')
+        plt.xlabel('Epochs')
+        plt.ylabel('Scores')
+        plt.title('Discriminator Scores on real and fake images')
+        plt.legend()
+        plt.savefig(os.path.join("reportWGAN/scores", f"scores_graph_epoch_{epoch + 1}.png"))
+        plt.close()
