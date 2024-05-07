@@ -42,7 +42,7 @@ parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first 
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=178, help="size of each image dimension")
+parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
 parser.add_argument("--sample_interval", type=int, default=200, help="interval betwen image samples")
@@ -126,8 +126,8 @@ criterion = nn.BCELoss()
 data_root = 'data/celebA'
 dataset_folder = f'{data_root}'
 transform = transforms.Compose([
-    transforms.Resize((178, 178)), 
-    transforms.CenterCrop((178, 178)),  
+    transforms.Resize((128, 128)), 
+    transforms.CenterCrop((128, 128)),  
     transforms.ToTensor(), 
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]) 
 ])
@@ -188,7 +188,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     real_accs, fake_accs = [], []
     num_batches = 0
     start_time = time.time()
-    for i, (real_images, _) in enumerate(dataloader):
+    for i, (real_images, _) in enumerate(train_loader):
         real_images = real_images.to(device)
         batch_size = real_images.size(0)
 
@@ -247,7 +247,7 @@ for epoch in range(start_epoch, opt.n_epochs):
 
         g_losses.append(g_loss.item())
         # print batch loss, discriminator scores, and accuracy
-        print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(dataloader)}] "
+        print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
               f"[D loss: {d_loss.item():.6f}] [G loss: {g_loss.item():.6f}] "
               f"[D's scores on real images: {real_score:.6f}] [fake score: {fake_score:.6f}] "
               f"[D's accuracies on real images: {real_acc:.4%}] [fake images: {fake_acc:.4%}]")
@@ -285,7 +285,7 @@ for epoch in range(start_epoch, opt.n_epochs):
         }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
 
     # output training stats for the epoch
-    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(dataloader)}] "
+    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
             f"[D loss: {epoch_d_loss:.6f}] [G loss: {epoch_g_loss:.6f}] "
             f"[D's epoch mean scores on real images: {epoch_real_score:.6f}] [fake images: {epoch_fake_score:.6f}] "
             f"[D's epoch mean accuracies on real images: {epoch_real_acc:.4%}] [fake images: {epoch_fake_acc:.4%}]")
@@ -298,25 +298,25 @@ for epoch in range(start_epoch, opt.n_epochs):
     print(f"Epoch {epoch+1} took {elapsed_minutes:.2f} minutes.")
 
     # generate and save fake images
-    if (epoch+1) % 5 == 0 or (epoch+1) == 1:
-        with torch.no_grad():
-            noise = torch.randn(batch_size, opt.latent_dim).to(device)
-            fake = generator(noise).detach().cpu()
-            img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
-            plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-            plt.savefig(os.path.join("reportCW/images", f"epoch_{epoch+1}_generated_images.png"))
-            plt.close()
+    # if (epoch+1) % 5 == 0 or (epoch+1) == 1:
+    with torch.no_grad():
+      noise = torch.randn(batch_size, opt.latent_dim).to(device)
+      fake = generator(noise).detach().cpu()
+      img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
+      plt.imshow(np.transpose(img_grid, (1, 2, 0)))
+      plt.savefig(os.path.join("reportCW/images", f"epoch_{epoch+1}_generated_images.png"))
+      plt.close()
 
 
     # generate and save fake images
-    if (epoch+1) % 50 == 0:
-        with torch.no_grad():
-            noise = torch.randn(batch_size, opt.latent_dim).to(device)
-            fake = generator(noise).detach().cpu()
-            img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
-            plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-            plt.savefig(os.path.join("reportCW/images", f"epoch_{epoch+1}_generated_images.png"))
-            plt.close()
+    # if (epoch+1) % 50 == 0:
+    #     with torch.no_grad():
+    #         noise = torch.randn(batch_size, opt.latent_dim).to(device)
+    #         fake = generator(noise).detach().cpu()
+    #         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
+    #         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
+    #         plt.savefig(os.path.join("reportCW/images", f"epoch_{epoch+1}_generated_images.png"))
+    #         plt.close()
 
     directoryL = "reportCW/losses"
     directoryS = "reportCW/scores"
@@ -328,7 +328,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     if not os.path.exists(directoryS):
         os.makedirs(directoryS)
 
-    if (epoch+1) % 50 == 0:
+    if (epoch+1) % 30 == 0:
         # losses graph
         plt.figure(figsize=(10, 5))
         plt.plot(all_d_losses, label='Discriminator Loss')
