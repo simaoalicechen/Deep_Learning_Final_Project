@@ -57,8 +57,6 @@ set_all_seeds(RANDOM_SEED)
 
 # DCGAN source: https://github.com/rasbt/stat453-deep-learning-ss21/blob/main/L18/04_02_dcgan-celeba.ipynb  
 
-# DCGAN source: https://github.com/rasbt/stat453-deep-learning-ss21/blob/main/L18/04_02_dcgan-celeba.ipynb  
-
 class DCGAN(torch.nn.Module):
 
     def __init__(self, latent_dim=100, 
@@ -68,90 +66,59 @@ class DCGAN(torch.nn.Module):
         
         
         self.generator = nn.Sequential(
-            nn.ConvTranspose2d(latent_dim, num_feat_maps_gen*8, 
-                               kernel_size=4, stride=1, padding=0,
-                               bias=False),
-            nn.BatchNorm2d(num_feat_maps_gen*8),
-            nn.LeakyReLU(inplace=True),
-            #
-            # size if latent_dim=100: num_feat_maps_gen*8 x 4 x 4
-            #
-            nn.ConvTranspose2d(num_feat_maps_gen*8, num_feat_maps_gen*4, 
-                               kernel_size=4, stride=2, padding=1,
-                               bias=False),
-            nn.BatchNorm2d(num_feat_maps_gen*4),
-            nn.LeakyReLU(inplace=True),
-            #
-            # size if latent_dim=100: num_feat_maps_gen*4 x 8 x 8
-            #
-            nn.ConvTranspose2d(num_feat_maps_gen*4, num_feat_maps_gen*2, 
-                               kernel_size=4, stride=2, padding=1,
-                               bias=False),
-            nn.BatchNorm2d(num_feat_maps_gen*2),
-            nn.LeakyReLU(inplace=True),
-            #
-            # size if latent_dim=100: num_feat_maps_gen*2 x 16 x 16
-            #
-            nn.ConvTranspose2d(num_feat_maps_gen*2, num_feat_maps_gen, 
-                               kernel_size=4, stride=2, padding=1,
-                               bias=False),
-            nn.BatchNorm2d(num_feat_maps_gen),
-            nn.LeakyReLU(inplace=True),
-            #
-            # size if latent_dim=100: num_feat_maps_gen x 32 x 32
-            #
-            nn.ConvTranspose2d(num_feat_maps_gen, color_channels, 
-                               kernel_size=4, stride=2, padding=1,
-                               bias=False),
-            #
-            # size: color_channels x 64 x 64
-            #  
-            nn.Tanh()
-        )
+      # Input: Latent vector z, going into a convolution
+      nn.ConvTranspose2d(latent_dim, num_feat_maps_gen * 16, 4, 1, 0, bias=False),
+      nn.BatchNorm2d(num_feat_maps_gen * 16),
+      nn.LeakyReLU(True),
+      # State size: (num_feat_maps_gen * 16) x 4 x 4
+      
+      nn.ConvTranspose2d(num_feat_maps_gen * 16, num_feat_maps_gen * 8, 4, 2, 1, bias=False),
+      nn.BatchNorm2d(num_feat_maps_gen * 8),
+      nn.LeakyReLU(True),
+      # State size: (num_feat_maps_gen * 8) x 8 x 8
+
+      nn.ConvTranspose2d(num_feat_maps_gen * 8, num_feat_maps_gen * 4, 4, 2, 1, bias=False),
+      nn.BatchNorm2d(num_feat_maps_gen * 4),
+      nn.LeakyReLU(True),
+      # State size: (num_feat_maps_gen * 4) x 16 x 16
+
+      nn.ConvTranspose2d(num_feat_maps_gen * 4, num_feat_maps_gen * 2, 4, 2, 1, bias=False),
+      nn.BatchNorm2d(num_feat_maps_gen * 2),
+      nn.LeakyReLU(True),
+      # State size: (num_feat_maps_gen * 2) x 32 x 32
+
+      nn.ConvTranspose2d(num_feat_maps_gen * 2, num_feat_maps_gen, 4, 2, 1, bias=False),
+      nn.BatchNorm2d(num_feat_maps_gen),
+      nn.LeakyReLU(True),
+      # State size: (num_feat_maps_gen) x 64 x 64
+
+      nn.ConvTranspose2d(num_feat_maps_gen, color_channels, 4, 2, 1, bias=False),
+      nn.Tanh()
+      # Output: (color_channels) x 128 x 128
+  )
+
 
         self.discriminator = nn.Sequential(
-                #
-                # input size color_channels x image_height x image_width
-                #
-                nn.Conv2d(color_channels, num_feat_maps_dis,
-                          kernel_size=4, stride=2, padding=1),
-                nn.LeakyReLU(inplace=True),
-                #
-                # size: num_feat_maps_dis x 32 x 32
-                #              
-                nn.Conv2d(num_feat_maps_dis, num_feat_maps_dis*2,
-                          kernel_size=4, stride=2, padding=1,
-                          bias=False),        
-                nn.BatchNorm2d(num_feat_maps_dis*2),
-                nn.LeakyReLU(inplace=True),
-                #
-                # size: num_feat_maps_dis*2 x 16 x 16
-                #   
-                nn.Conv2d(num_feat_maps_dis*2, num_feat_maps_dis*4,
-                          kernel_size=4, stride=2, padding=1,
-                          bias=False),        
-                nn.BatchNorm2d(num_feat_maps_dis*4),
-                nn.LeakyReLU(inplace=True),
-                #
-                # size: num_feat_maps_dis*4 x 8 x 8
-                #   
-                nn.Conv2d(num_feat_maps_dis*4, num_feat_maps_dis*8,
-                          kernel_size=4, stride=2, padding=1,
-                          bias=False),        
-                nn.BatchNorm2d(num_feat_maps_dis*8),
-                nn.LeakyReLU(inplace=True),
-                #
-                # size: num_feat_maps_dis*8 x 4 x 4
-                #   
-                nn.Conv2d(num_feat_maps_dis*8, 1,
-                          kernel_size=4, stride=1, padding=0),
-                
-                # size: 1 x 1 x 1
-                nn.Flatten(),
-                
-            )
+        nn.Conv2d(3, 128, 4, 2, 1),  # Input channels = 3 (RGB), output channels = 64
+        nn.LeakyReLU(0.2, inplace=True),
 
-                
+        nn.Conv2d(128, 128, 4, 2, 1),  # Input channels from previous output = 64
+        nn.BatchNorm2d(128),
+        nn.LeakyReLU(0.2, inplace=True),
+
+        nn.Conv2d(128, 256, 4, 2, 1),  # Follow this pattern
+        nn.BatchNorm2d(256),
+        nn.LeakyReLU(0.2, inplace=True),
+
+        nn.Conv2d(256, 512, 4, 2, 1),
+        nn.BatchNorm2d(512),
+        nn.LeakyReLU(0.2, inplace=True),
+
+        # Final layer to output a single value per image
+        nn.Conv2d(512, 1, 4, 1, 0),
+        nn.Flatten(),
+    )
+
     def generator_forward(self, z):
         img = self.generator(z)
         return img
@@ -159,8 +126,12 @@ class DCGAN(torch.nn.Module):
     def discriminator_forward(self, img):
         logits = model.discriminator(img)
         return logits
-
-
+    # def discriminator_forward(self, img):
+    #     x = img
+    #     for i, layer in enumerate(self.discriminator):
+    #         x = layer(x)
+    #         print(f"Layer {i} type {layer.__class__.__name__}: output shape {x.shape}")
+    #     return x
 
 model = DCGAN()
 model.to(device)
@@ -181,8 +152,8 @@ optim_discr = torch.optim.Adam(model.discriminator.parameters(),
 data_root = 'data/celeba'
 dataset_folder = f'{data_root}'
 transform = transforms.Compose([
-    transforms.Resize((64, 64)), 
-    transforms.CenterCrop((64, 64)),  
+    transforms.Resize((128, 128)), 
+    transforms.CenterCrop((128, 128)),  
     transforms.ToTensor(), 
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize tensors
 ])
@@ -233,9 +204,9 @@ num_epochs = opt.n_epochs
 # if save_model is not None:
 #     torch.save(model.state_dict(), save_model)
 #     os.makedirs("reportCW/losses", exist_ok=True)
-os.makedirs("reportR/images", exist_ok=True)
+os.makedirs("reportR128/images", exist_ok=True)
 # Path to save the models
-save_path = 'savesR/'
+save_path = 'saves128/'
 os.makedirs(save_path, exist_ok=True)
 
 # define parameters for metrics and graphs
@@ -264,13 +235,11 @@ for epoch in range(0, num_epochs+1):
 
         # real images
         real_images = features.to(device)
-        print(real_images.shape)
         real_labels = torch.ones(batch_size, device=device) # real label = 1
 
         # generated (fake) images
         noise = torch.randn(batch_size, opt.latent_dim, 1, 1, device=device)  # format NCHW
         fake_images = model.generator_forward(noise)
-        print(f"Fake Images Shape: {fake_images.shape}")
         fake_labels = torch.zeros(batch_size, device=device) # fake label = 0
         flipped_fake_labels = real_labels # here, fake label = 1
 
@@ -349,7 +318,6 @@ for epoch in range(0, num_epochs+1):
               f"[D's accuracies on real images: {acc_real:.4%}] [fake images: {acc_fake:.4%}]")
 
     # calculate average loss and scores for the current epoch
-    print(d_losses)
     epoch_d_loss = sum(d_losses) / len(d_losses)
     epoch_g_loss = sum(g_losses) / len(g_losses)
     epoch_real_score = sum(real_scores) / len(real_scores)
@@ -402,12 +370,12 @@ for epoch in range(0, num_epochs+1):
       fake = generator(noise).detach().cpu()
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
       plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-      plt.savefig(os.path.join("reportR/images", f"epoch_{epoch+1}_generated_images.png"))
+      plt.savefig(os.path.join("reportR128/images", f"epoch_{epoch+1}_generated_images.png"))
       plt.close()
 
-    directoryL = "reportR/losses"
-    directoryS = "reportR/scores"
-    directoryA = "reportR/accuracies"
+    directoryL = "reportR128/losses"
+    directoryS = "reportR128/scores"
+    directoryA = "reportR128/accuracies"
     if not os.path.exists(directoryL):
         os.makedirs(directoryL)
     if not os.path.exists(directoryA):
@@ -424,7 +392,7 @@ for epoch in range(0, num_epochs+1):
         plt.ylabel('Loss')
         plt.title('Discriminator and Generator Losses')
         plt.legend()
-        plt.savefig(os.path.join("reportR/losses", f"losses_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("reportR128/losses", f"losses_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # accuracies graph
@@ -435,7 +403,7 @@ for epoch in range(0, num_epochs+1):
         plt.ylabel('Accuracies')
         plt.title("Discriminator's Accuracies of Real and Fake Images")
         plt.legend()
-        plt.savefig(os.path.join("reportR/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("reportR128/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # scores
@@ -446,7 +414,7 @@ for epoch in range(0, num_epochs+1):
         plt.ylabel('Scores')
         plt.title('Discriminator Scores on real and fake images')
         plt.legend()
-        plt.savefig(os.path.join("reportR/scores", f"scores_graph_epoch_{epoch + 1}.png"))
+        plt.savefig(os.path.join("reportR128/scores", f"scores_graph_epoch_{epoch + 1}.png"))
         plt.close()
 
 
