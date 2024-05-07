@@ -260,6 +260,7 @@ for epoch in range(0, num_epochs+1):
     num_batches = 0
     model.train()
     for batch_idx, (features, _) in enumerate(train_loader):
+        num_batches += 1
         batch_size = features.size(0)
 
         # real images

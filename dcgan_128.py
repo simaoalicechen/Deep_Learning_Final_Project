@@ -99,25 +99,25 @@ class DCGAN(torch.nn.Module):
 
 
         self.discriminator = nn.Sequential(
-        nn.Conv2d(3, 128, 4, 2, 1),  # Input channels = 3 (RGB), output channels = 64
-        nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(color_channels, num_feat_maps_dis, 4, 2, 1),
+            nn.LeakyReLU(0.2, inplace=True),
 
-        nn.Conv2d(128, 128, 4, 2, 1),  # Input channels from previous output = 64
-        nn.BatchNorm2d(128),
-        nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(num_feat_maps_dis, num_feat_maps_dis * 2, 4, 2, 1),
+            nn.BatchNorm2d(num_feat_maps_dis * 2),
+            nn.LeakyReLU(0.2, inplace=True),
 
-        nn.Conv2d(128, 256, 4, 2, 1),  # Follow this pattern
-        nn.BatchNorm2d(256),
-        nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(num_feat_maps_dis * 2, num_feat_maps_dis * 4, 4, 2, 1),
+            nn.BatchNorm2d(num_feat_maps_dis * 4),
+            nn.LeakyReLU(0.2, inplace=True),
 
-        nn.Conv2d(256, 512, 4, 2, 1),
-        nn.BatchNorm2d(512),
-        nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(num_feat_maps_dis * 4, num_feat_maps_dis * 8, 4, 2, 1),
+            nn.BatchNorm2d(num_feat_maps_dis * 8),
+            nn.LeakyReLU(0.2, inplace=True),
 
-        # Final layer to output a single value per image
-        nn.Conv2d(512, 1, 4, 1, 0),
-        nn.Flatten(),
-    )
+            # This layer should flatten the output to 1D and output a single value per image
+            nn.Conv2d(num_feat_maps_dis * 8, 1, 8, 1, 0),
+            nn.Flatten()
+        )
 
     def generator_forward(self, z):
         img = self.generator(z)
@@ -165,17 +165,17 @@ train_loader, valid_loader, test_loader = get_dataloaders_celeba(
     num_workers=4)
 
 # check the data
-print("length of train_loader", len(train_loader))
-print("length of valid_loader", len(valid_loader))
-print("length of test_loader", len(test_loader))
+# print("length of train_loader", len(train_loader))
+# print("length of valid_loader", len(valid_loader))
+# print("length of test_loader", len(test_loader))
 
 n = 0
 dataiter = iter(train_loader)
 images, labels = next(dataiter)
 # check if it's a tensor or a list
-print(type(images))  
-print(images[:2])
-print(images.shape)
+# print(type(images))  
+# print(images[:2])
+# print(images.shape)
 
 os.makedirs("real_images", exist_ok=True)
 
@@ -231,6 +231,7 @@ for epoch in range(0, num_epochs+1):
     num_batches = 0
     model.train()
     for batch_idx, (features, _) in enumerate(train_loader):
+        num_batches += 1
         batch_size = features.size(0)
 
         # real images
@@ -256,16 +257,22 @@ for epoch in range(0, num_epochs+1):
 
 
         # get discriminator loss on real images
+        # print("real_images", real_images.shape)
         discr_pred_real = model.discriminator_forward(real_images).view(-1) 
+        # print("Discriminator real predictions shape:", discr_pred_real.shape)
         real_score = torch.sigmoid(discr_pred_real).mean().item()
         real_scores.append(real_score)
+        # print("real_labels shape:", real_labels.shape)
         real_loss = F.binary_cross_entropy_with_logits(discr_pred_real, real_labels)
         # real_loss.backward()
 
         # get discriminator loss on fake images
         discr_pred_fake = model.discriminator_forward(fake_images.detach()).view(-1)
+        # print("Discriminator fake predictions shape:", discr_pred_fake.shape)
         fake_score = torch.sigmoid(discr_pred_fake).mean().item()
-        fake_scores.append(fake_score)
+        # fake_scores.append(fake_score)
+        # print("fake_labels shape:", fake_labels.shape)
+        # print("fake_score shape:", fake_score.shape)
         fake_loss = F.binary_cross_entropy_with_logits(discr_pred_fake, fake_labels)
 
         # combined loss
