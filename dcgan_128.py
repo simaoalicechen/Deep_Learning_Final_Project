@@ -359,7 +359,7 @@ for epoch in range(0, num_epochs+1):
         }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
 
     # output training stats for the epoch
-    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
+    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "
             f"[D loss: {epoch_d_loss:.6f}] [G loss: {epoch_g_loss:.6f}] "
             f"[D's epoch mean scores on real images: {epoch_real_score:.6f}] [fake images: {epoch_fake_score:.6f}] "
             f"[D's epoch mean accuracies on real images: {epoch_real_acc:.4%}] [fake images: {epoch_fake_acc:.4%}]")
