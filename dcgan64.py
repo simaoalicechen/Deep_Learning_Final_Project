@@ -33,8 +33,8 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
+parser.add_argument("--n_epochs", type=int, default = 2000, help="number of epochs of training")
+parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
 # parser.add_argument("--lr", type=float, default=0.01, help="SGD: learning rate")
@@ -246,7 +246,23 @@ all_d_losses, all_g_losses = [], []
 all_real_scores, all_fake_scores = [], []
 all_real_accs, all_fake_accs = [], []
 
-for epoch in range(0, num_epochs+1):
+# Path where the checkpoints are saved
+checkpoint_path = 'savesR/checkpoint_epoch_390.pth'
+
+# Load the checkpoint
+if os.path.exists(checkpoint_path):
+    checkpoint = torch.load(checkpoint_path)
+    model.generator.load_state_dict(checkpoint['generator_state_dict'])
+    model.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+    optim_gen.load_state_dict(checkpoint['optimizer_G_state_dict'])
+    optim_discr.load_state_dict(checkpoint['optimizer_D_state_dict'])
+    print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
+
+start_epoch = checkpoint['epoch'] + 1 
+# if 'epoch' in checkpoint 
+print(start_epoch)
+# training codes partially from the original github
+for epoch in range(start_epoch, num_epochs+1):
     log_dict = {'train_generator_loss_per_batch': [],
                 'train_discriminator_loss_per_batch': [],
                 'train_discriminator_real_acc_per_batch': [],
@@ -393,7 +409,7 @@ for epoch in range(0, num_epochs+1):
     model.eval() 
     with torch.no_grad():
       if (epoch + 1) <=900:
-        noise = torch.randn(5, opt.latent_dim, 1, 1).to(device) 
+        noise = torch.randn(8, opt.latent_dim, 1, 1).to(device) 
         fake = model.generator_forward(noise).detach().cpu()
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.axis('off')
