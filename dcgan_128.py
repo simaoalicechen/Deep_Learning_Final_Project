@@ -371,44 +371,44 @@ for epoch in range(0, num_epochs+1):
     if (epoch + 1) % 30 == 0 or (epoch + 1) == 1:
         # Make sure data is on the CPU and in a suitable format (numpy array or list)
         for loss in all_d_losses:
-            if isinstance(loss, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(loss, torch.Tensor):  
                 if loss.is_cuda:
-                    loss = loss.cpu()  # Move to CPU if it's on CUDA
-                loss = loss.detach().numpy()  # Convert to numpy array
+                    loss = loss.cpu()  
+                loss = loss.detach().numpy() 
             all_d_losses_cpu.append(loss)
         for loss in all_g_losses:
-            if isinstance(loss, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(loss, torch.Tensor):  
                 if loss.is_cuda:
-                    loss = loss.cpu()  # Move to CPU if it's on CUDA
-                loss = loss.detach().numpy() # Convert to numpy array
+                    loss = loss.cpu() 
+                loss = loss.detach().numpy() 
             all_g_losses_cpu.append(loss)
 
         for acc in all_real_accs:
-            if isinstance(acc, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(acc, torch.Tensor):
                 if acc.is_cuda:
-                    acc = acc.cpu()  # Move to CPU if it's on CUDA
-                acc = acc.detach().numpy()  # Convert to numpy array
+                    acc = acc.cpu()  
+                acc = acc.detach().numpy()  
             all_real_accs_cpu.append(acc)
 
         for acc in all_fake_accs:
-            if isinstance(acc, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(acc, torch.Tensor): 
                 if acc.is_cuda:
-                    acc = acc.cpu()  # Move to CPU if it's on CUDA
-                acc = acc.detach().numpy() # Convert to numpy array
+                    acc = acc.cpu() 
+                acc = acc.detach().numpy() 
             all_fake_accs_cpu.append(acc)
 
         for score in all_real_scores:
-            if isinstance(score, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(score, torch.Tensor):  
                 if score.is_cuda:
-                    score = score.cpu()  # Move to CPU if it's on CUDA
-                score = score.detach().numpy()  # Convert to numpy array
+                    score = score.cpu() 
+                score = score.detach().numpy()  
             all_real_scores_cpu.append(score)
 
         for score in all_fake_scores:
-            if isinstance(score, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(score, torch.Tensor):  
                 if score.is_cuda:
-                    score = score.cpu()  # Move to CPU if it's on CUDA
-                score = score.detach().numpy()  # Convert to numpy array
+                    score = score.cpu()  
+                score = score.detach().numpy() 
             all_fake_scores_cpu.append(score)
 
         # losses graph
