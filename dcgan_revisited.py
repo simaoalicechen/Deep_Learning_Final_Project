@@ -336,8 +336,8 @@ for epoch in range(0, num_epochs+1):
         log_dict['train_discriminator_loss_per_batch'].append(discr_loss.item())
         predicted_labels_real = torch.where(discr_pred_real > 0., 1., 0.)
         predicted_labels_fake = torch.where(discr_pred_fake > 0., 1., 0.)
-        acc_real = (predicted_labels_real == real_labels).float().mean().item() * 100.0
-        acc_fake = (predicted_labels_fake == fake_labels).float().mean().item() * 100.0
+        acc_real = (predicted_labels_real == real_labels).float().mean().item()
+        acc_fake = (predicted_labels_fake == fake_labels).float().mean().item()
         log_dict['train_discriminator_real_acc_per_batch'].append(acc_real)
         log_dict['train_discriminator_fake_acc_per_batch'].append(acc_fake) 
         real_accs.append(acc_real)
@@ -351,7 +351,7 @@ for epoch in range(0, num_epochs+1):
         print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "
               f"[D loss: {discr_loss:.6f}] [G loss: {gener_loss:.6f}] "
               f"[D's scores on real images: {real_score:.6f}] [fake score: {fake_score:.6f}] "
-              f"[D's accuracies on real images: {acc_real:.4%}] [fake images: {acc_fake:.4%}]")
+              f"[D's accuracies on real images: {acc_real:.2%}] [fake images: {acc_fake:.2%}]")
 
     # calculate average loss and scores for the current epoch
     print(d_losses)
@@ -392,7 +392,7 @@ for epoch in range(0, num_epochs+1):
     print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "
             f"[D loss: {epoch_d_loss:.6f}] [G loss: {epoch_g_loss:.6f}] "
             f"[D's epoch mean scores on real images: {epoch_real_score:.6f}] [fake images: {epoch_fake_score:.6f}] "
-            f"[D's epoch mean accuracies on real images: {epoch_real_acc:.4%}] [fake images: {epoch_fake_acc:.4%}]")
+            f"[D's epoch mean accuracies on real images: {epoch_real_acc:.2%}] [fake images: {epoch_fake_acc:.2%}]")
 
         # end timer for epoch
     end_time = time.time()
