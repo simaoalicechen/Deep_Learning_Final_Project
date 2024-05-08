@@ -167,7 +167,7 @@ class DCGAN(torch.nn.Module):
 model = DCGAN()
 model.to(device)
 
-print(hasattr(model, 'generator'))  # Should print True if your model has a 'generator'
+print(hasattr(model, 'generator'))  
 print(hasattr(model, 'discriminator'))
 
 # dummy_images = torch.randn(128, 3, 128, 128, device=device)  
@@ -236,9 +236,6 @@ start_time = time.time()
 logging_interval = 200
 num_epochs = opt.n_epochs
 
-# if save_model is not None:
-#     torch.save(model.state_dict(), save_model)
-#     os.makedirs("reportCW/losses", exist_ok=True)
 os.makedirs("reportR2/images", exist_ok=True)
 # Path to save the models
 save_path = 'savesR/'
@@ -287,11 +284,6 @@ for epoch in range(0, num_epochs+1):
         # --------------------------
 
         optim_discr.zero_grad()
-
-        # Before loss calculation
-        # print("Discriminator real predictions shape:", discr_pred_real.shape)
-        # print("Discriminator fake predictions shape:", discr_pred_fake.shape)
-
 
         # get discriminator loss on real images
         discr_pred_real = model.discriminator_forward(real_images).view(-1) 
@@ -344,10 +336,6 @@ for epoch in range(0, num_epochs+1):
         log_dict['train_discriminator_fake_acc_per_batch'].append(acc_fake) 
         real_accs.append(acc_real)
         fake_accs.append(acc_fake)
-
-            
-        # epoch_real_acc += acc_real
-        # epoch_fake_acc += acc_fake
 
         # print batch loss, discriminator scores, and accuracy
         print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "

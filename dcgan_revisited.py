@@ -165,13 +165,9 @@ class DCGAN(torch.nn.Module):
 model = DCGAN()
 model.to(device)
 
-print(hasattr(model, 'generator'))  # Should print True if your model has a 'generator'
+print(hasattr(model, 'generator')) 
 print(hasattr(model, 'discriminator'))
 
-# dummy_images = torch.randn(128, 3, 128, 128, device=device)  
-# output = model.discriminator_forward(dummy_images)
-# print("Final output from discriminator:", output)
-# With Adam, good results
 optim_gen = torch.optim.Adam(model.generator.parameters(),
                              betas=(opt.b1, opt.b2),
                              lr=opt.lr)
@@ -234,9 +230,6 @@ start_time = time.time()
 logging_interval = 200
 num_epochs = opt.n_epochs
 
-# if save_model is not None:
-#     torch.save(model.state_dict(), save_model)
-#     os.makedirs("reportCW/losses", exist_ok=True)
 os.makedirs("reportR/images", exist_ok=True)
 # Path to save the models
 save_path = 'savesR/'
@@ -270,14 +263,14 @@ for epoch in range(0, num_epochs+1):
         # real images
         real_images = features.to(device)
         print(real_images.shape)
-        real_labels = torch.ones(batch_size, device=device) # real label = 1
+        real_labels = torch.ones(batch_size, device=device) 
 
         # generated (fake) images
-        noise = torch.randn(batch_size, opt.latent_dim, 1, 1, device=device)  # format NCHW
+        noise = torch.randn(batch_size, opt.latent_dim, 1, 1, device=device)  
         fake_images = model.generator_forward(noise)
         print(f"Fake Images Shape: {fake_images.shape}")
-        fake_labels = torch.zeros(batch_size, device=device) # fake label = 0
-        flipped_fake_labels = real_labels # here, fake label = 1
+        fake_labels = torch.zeros(batch_size, device=device) 
+        flipped_fake_labels = real_labels
 
 
         # --------------------------
@@ -285,11 +278,6 @@ for epoch in range(0, num_epochs+1):
         # --------------------------
 
         optim_discr.zero_grad()
-
-        # Before loss calculation
-        # print("Discriminator real predictions shape:", discr_pred_real.shape)
-        # print("Discriminator fake predictions shape:", discr_pred_fake.shape)
-
 
         # get discriminator loss on real images
         discr_pred_real = model.discriminator_forward(real_images).view(-1) 
@@ -344,9 +332,6 @@ for epoch in range(0, num_epochs+1):
         fake_accs.append(acc_fake)
 
             
-        # epoch_real_acc += acc_real
-        # epoch_fake_acc += acc_fake
-
         # print batch loss, discriminator scores, and accuracy
         print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "
               f"[D loss: {discr_loss:.6f}] [G loss: {gener_loss:.6f}] "
@@ -430,44 +415,44 @@ for epoch in range(0, num_epochs+1):
     if (epoch + 1) % 30 == 0 or (epoch + 1) == 1:
         # Make sure data is on the CPU and in a suitable format (numpy array or list)
         for loss in all_d_losses:
-            if isinstance(loss, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(loss, torch.Tensor):  
                 if loss.is_cuda:
-                    loss = loss.cpu()  # Move to CPU if it's on CUDA
-                loss = loss.detach().numpy()  # Convert to numpy array
+                    loss = loss.cpu()  
+                loss = loss.detach().numpy() 
             all_d_losses_cpu.append(loss)
         for loss in all_g_losses:
-            if isinstance(loss, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(loss, torch.Tensor):  
                 if loss.is_cuda:
-                    loss = loss.cpu()  # Move to CPU if it's on CUDA
-                loss = loss.detach().numpy() # Convert to numpy array
+                    loss = loss.cpu() 
+                loss = loss.detach().numpy() 
             all_g_losses_cpu.append(loss)
 
         for acc in all_real_accs:
-            if isinstance(acc, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(acc, torch.Tensor):  
                 if acc.is_cuda:
-                    acc = acc.cpu()  # Move to CPU if it's on CUDA
-                acc = acc.detach().numpy()  # Convert to numpy array
+                    acc = acc.cpu()  
+                acc = acc.detach().numpy()  
             all_real_accs_cpu.append(acc)
 
         for acc in all_fake_accs:
-            if isinstance(acc, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(acc, torch.Tensor):  
                 if acc.is_cuda:
-                    acc = acc.cpu()  # Move to CPU if it's on CUDA
-                acc = acc.detach().numpy()  # Convert to numpy array
+                    acc = acc.cpu() 
+                acc = acc.detach().numpy()  
             all_fake_accs_cpu.append(acc)
 
         for score in all_real_scores:
-            if isinstance(score, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(score, torch.Tensor):  
                 if score.is_cuda:
-                    score = score.cpu()  # Move to CPU if it's on CUDA
-                score = score.detach().numpy()  # Convert to numpy array
+                    score = score.cpu()  
+                score = score.detach().numpy() 
             all_real_scores_cpu.append(score)
 
         for score in all_fake_scores:
-            if isinstance(score, torch.Tensor):  # Check if the element is a tensor
+            if isinstance(score, torch.Tensor):  
                 if score.is_cuda:
-                    score = score.cpu()  # Move to CPU if it's on CUDA
-                score = score.detach().numpy() # Convert to numpy array
+                    score = score.cpu()  
+                score = score.detach().numpy() 
             all_fake_scores_cpu.append(score)
 
         # losses graph

@@ -57,6 +57,9 @@ set_all_seeds(RANDOM_SEED)
 
 # DCGAN source: https://github.com/rasbt/stat453-deep-learning-ss21/blob/main/L18/04_02_dcgan-celeba.ipynb  
 
+# I modified the architecture codes to accommodate the change of input size form 64 to 128: https://github.com/soumith/dcgan.torch/issues/2#issuecomment-164862299
+# https://github.com/pytorch/examples/blob/main/dcgan/main.py#L139-L156
+
 class DCGAN(torch.nn.Module):
 
     def __init__(self, latent_dim=100, 
@@ -126,19 +129,9 @@ class DCGAN(torch.nn.Module):
     def discriminator_forward(self, img):
         logits = model.discriminator(img)
         return logits
-    # def discriminator_forward(self, img):
-    #     x = img
-    #     for i, layer in enumerate(self.discriminator):
-    #         x = layer(x)
-    #         print(f"Layer {i} type {layer.__class__.__name__}: output shape {x.shape}")
-    #     return x
 
 model = DCGAN()
 model.to(device)
-# dummy_images = torch.randn(128, 3, 128, 128, device=device)  
-# output = model.discriminator_forward(dummy_images)
-# print("Final output from discriminator:", output)
-# With Adam, good results
 optim_gen = torch.optim.Adam(model.generator.parameters(),
                              betas=(opt.b1, opt.b2),
                              lr=opt.lr)
@@ -164,18 +157,9 @@ train_loader, valid_loader, test_loader = get_dataloaders_celeba(
     test_transforms=transform,
     num_workers=4)
 
-# check the data
-# print("length of train_loader", len(train_loader))
-# print("length of valid_loader", len(valid_loader))
-# print("length of test_loader", len(test_loader))
-
 n = 0
 dataiter = iter(train_loader)
 images, labels = next(dataiter)
-# check if it's a tensor or a list
-# print(type(images))  
-# print(images[:2])
-# print(images.shape)
 
 os.makedirs("real_images", exist_ok=True)
 
@@ -191,9 +175,6 @@ plt.savefig("real_images/training_images.png")
 # show the plot
 plt.show()
 
-# Training function source: https://github.com/rasbt/stat453-deep-learning-ss21/blob/main/L18/helper_train.py 
-# if loss_fn is None:
-# loss_fn = F.binary_cross_entropy_with_logits
 
 fixed_noise = torch.randn(64, opt.latent_dim, 1, 1, device=device)
 
@@ -201,11 +182,7 @@ start_time = time.time()
 logging_interval = 200
 num_epochs = opt.n_epochs
 
-# if save_model is not None:
-#     torch.save(model.state_dict(), save_model)
-#     os.makedirs("reportCW/losses", exist_ok=True)
 os.makedirs("reportR128/images", exist_ok=True)
-# Path to save the models
 save_path = 'saves128/'
 os.makedirs(save_path, exist_ok=True)
 
@@ -260,15 +237,12 @@ for epoch in range(0, num_epochs+1):
 
         # get discriminator loss on fake images
         discr_pred_fake = model.discriminator_forward(fake_images.detach()).view(-1)
-        # print("Discriminator fake predictions shape:", discr_pred_fake.shape)
         fake_score = torch.sigmoid(discr_pred_fake).mean().item()
         if epoch+ 1 == 1 and batch_idx == 0:
             print(fake_score)
         fake_scores.append(fake_score)
         if epoch+ 1 == 1 and batch_idx == 0:
             print(len(fake_scores))
-        # print("fake_labels shape:", fake_labels.shape)
-        # print("fake_score shape:", fake_score.shape)
         fake_loss = F.binary_cross_entropy_with_logits(discr_pred_fake, fake_labels)
 
         # combined loss
