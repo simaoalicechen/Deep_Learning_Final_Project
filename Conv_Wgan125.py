@@ -42,7 +42,7 @@ parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first 
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-parser.add_argument("--img_size", type=int, default=100, help="size of each image dimension")
+parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
 parser.add_argument("--sample_interval", type=int, default=200, help="interval betwen image samples")
@@ -126,8 +126,8 @@ criterion = nn.BCELoss()
 data_root = 'data/celebA'
 dataset_folder = f'{data_root}'
 transform = transforms.Compose([
-    transforms.Resize((100, 100)), 
-    transforms.CenterCrop((100, 100)),  
+    transforms.Resize((128, 128)), 
+    transforms.CenterCrop((128, 128)),  
     transforms.ToTensor(), 
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]) 
 ])
@@ -171,10 +171,10 @@ criterion = nn.BCEWithLogitsLoss()
 
 start_epoch = 0
 # start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc = load_checkpoint('path_to_checkpoint.pth', generator, discriminator, optimizer_G, optimizer_D)
-os.makedirs("reportCW3/images", exist_ok=True)
+os.makedirs("reportCW128/images", exist_ok=True)
 
 # Path to save the models
-save_path = 'ConvWgan3/'
+save_path = 'savesConvWgan128/'
 os.makedirs(save_path, exist_ok=True)
 
 # define parameters for metrics and graphs
@@ -271,7 +271,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     all_fake_accs.append(epoch_fake_acc)
 
     # save past data
-    if (epoch + 1) % 5 == 0:
+    if (epoch + 1) % 5 == 0 or (epoch+1) == 1:
         torch.save({
             'epoch': epoch,
             'generator_state_dict': generator.state_dict(),

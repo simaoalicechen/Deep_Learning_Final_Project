@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 200, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
@@ -164,6 +164,10 @@ class DCGAN(torch.nn.Module):
 
 model = DCGAN()
 model.to(device)
+
+print(hasattr(model, 'generator'))  # Should print True if your model has a 'generator'
+print(hasattr(model, 'discriminator'))
+
 # dummy_images = torch.randn(128, 3, 128, 128, device=device)  
 # output = model.discriminator_forward(dummy_images)
 # print("Final output from discriminator:", output)
@@ -369,15 +373,15 @@ for epoch in range(0, num_epochs+1):
     all_fake_accs.append(epoch_fake_acc)
 
     # save past data
-    if (epoch + 1) % 5 == 0:
+    if (epoch + 1) % 5 == 0 or (epoch + 1) == 1:
         torch.save({
             'epoch': epoch,
-            'generator_state_dict': generator.state_dict(),
-            'discriminator_state_dict': discriminator.state_dict(),
-            'optimizer_G_state_dict': optimizer_G.state_dict(),
-            'optimizer_D_state_dict': optimizer_D.state_dict(),
-            'lossG': g_loss.item(),
-            'lossD': d_loss.item(),
+            'generator_state_dict': model.generator.state_dict(), 
+            'discriminator_state_dict': model.discriminator.state_dict(),  
+            'optimizer_G_state_dict': optim_gen.state_dict(),  
+            'optimizer_D_state_dict': optim_discr.state_dict(),  
+            'lossG': gener_loss.item,  
+            'lossD': discr_loss.item,  
             'real_score': epoch_real_score,       
             'fake_score': epoch_fake_score,     
             'real_acc': epoch_real_acc,            
@@ -396,15 +400,16 @@ for epoch in range(0, num_epochs+1):
     elapsed_minutes = elapsed_time / 60.0
     print(f"Epoch {epoch+1} took {elapsed_minutes:.2f} minutes.")
 
-    # generate and save fake images
-    # if (epoch+1) % 5 == 0 or (epoch+1) == 1:
+    model.eval() 
     with torch.no_grad():
-      noise = torch.randn(batch_size, opt.latent_dim).to(device)
-      fake = generator(noise).detach().cpu()
+      noise = torch.randn(16, opt.latent_dim, 1, 1).to(device) 
+      fake = model.generator_forward(noise).detach().cpu()
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
+      plt.axis('off')
       plt.imshow(np.transpose(img_grid, (1, 2, 0)))
       plt.savefig(os.path.join("reportR/images", f"epoch_{epoch+1}_generated_images.png"))
       plt.close()
+      model.train() 
 
     directoryL = "reportR/losses"
     directoryS = "reportR/scores"
@@ -415,12 +420,60 @@ for epoch in range(0, num_epochs+1):
         os.makedirs(directoryA)
     if not os.path.exists(directoryS):
         os.makedirs(directoryS)
+    all_d_losses_cpu = []
+    all_g_losses_cpu = []
+    all_real_accs_cpu = []
+    all_fake_accs_cpu = []
+    all_real_scores_cpu = []
+    all_fake_scores_cpu = []
 
-    if (epoch+1) in [1,2, 5, 10, 20, 30, 50, 100, 150, 200]:
+    if (epoch + 1) % 30 == 0 or (epoch + 1) == 1:
+        # Make sure data is on the CPU and in a suitable format (numpy array or list)
+        for loss in all_d_losses:
+            if isinstance(loss, torch.Tensor):  # Check if the element is a tensor
+                if loss.is_cuda:
+                    loss = loss.cpu()  # Move to CPU if it's on CUDA
+                loss = loss.detach().numpy()  # Convert to numpy array
+            all_d_losses_cpu.append(loss)
+        for loss in all_g_losses:
+            if isinstance(loss, torch.Tensor):  # Check if the element is a tensor
+                if loss.is_cuda:
+                    loss = loss.cpu()  # Move to CPU if it's on CUDA
+                loss = loss.detach().numpy() # Convert to numpy array
+            all_g_losses_cpu.append(loss)
+
+        for acc in all_real_accs:
+            if isinstance(acc, torch.Tensor):  # Check if the element is a tensor
+                if acc.is_cuda:
+                    acc = acc.cpu()  # Move to CPU if it's on CUDA
+                acc = acc.detach().numpy()  # Convert to numpy array
+            all_real_accs_cpu.append(acc)
+
+        for acc in all_fake_accs:
+            if isinstance(acc, torch.Tensor):  # Check if the element is a tensor
+                if acc.is_cuda:
+                    acc = acc.cpu()  # Move to CPU if it's on CUDA
+                acc = acc.detach().numpy()  # Convert to numpy array
+            all_fake_accs_cpu.append(acc)
+
+        for score in all_real_scores:
+            if isinstance(score, torch.Tensor):  # Check if the element is a tensor
+                if score.is_cuda:
+                    score = score.cpu()  # Move to CPU if it's on CUDA
+                score = score.detach().numpy()  # Convert to numpy array
+            all_real_scores_cpu.append(score)
+
+        for score in all_fake_scores:
+            if isinstance(score, torch.Tensor):  # Check if the element is a tensor
+                if score.is_cuda:
+                    score = score.cpu()  # Move to CPU if it's on CUDA
+                score = score.detach().numpy() # Convert to numpy array
+            all_fake_scores_cpu.append(score)
+
         # losses graph
         plt.figure(figsize=(10, 5))
-        plt.plot(all_d_losses, label='Discriminator Loss')
-        plt.plot(all_g_losses, label='Generator Loss')
+        plt.plot(all_d_losses_cpu, label='Discriminator Loss')
+        plt.plot(all_g_losses_cpu, label='Generator Loss')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.title('Discriminator and Generator Losses')
@@ -430,8 +483,8 @@ for epoch in range(0, num_epochs+1):
 
         # accuracies graph
         plt.figure(figsize=(10, 5))
-        plt.plot(all_real_accs, label='Real Image Accuracy')
-        plt.plot(all_fake_accs, label='Fake Image Accuracy')
+        plt.plot(all_real_accs_cpu, label='Real Image Accuracy')
+        plt.plot(all_fake_accs_cpu, label='Fake Image Accuracy')
         plt.xlabel('Epochs')
         plt.ylabel('Accuracies')
         plt.title("Discriminator's Accuracies of Real and Fake Images")
@@ -441,14 +494,11 @@ for epoch in range(0, num_epochs+1):
 
         # scores
         plt.figure(figsize=(10, 5))
-        plt.plot(all_real_scores, label='real image Scores')
-        plt.plot(all_fake_scores, label='fake image Scores')
+        plt.plot(all_real_scores_cpu, label='Real Image Scores')
+        plt.plot(all_fake_scores_cpu, label='Fake Image Scores')
         plt.xlabel('Epochs')
         plt.ylabel('Scores')
         plt.title('Discriminator Scores on real and fake images')
         plt.legend()
         plt.savefig(os.path.join("reportR/scores", f"scores_graph_epoch_{epoch + 1}.png"))
         plt.close()
-
-
-   

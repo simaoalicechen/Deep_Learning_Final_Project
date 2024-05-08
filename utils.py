@@ -1,9 +1,10 @@
 import torch
 from torchvision import datasets
 from torchvision import transforms
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torch.utils.data import SubsetRandomSampler
 from torch.utils.data import sampler
+# from torch.utils.data import DataLoader, Subset
 import gdown
 import random
 import numpy as np
@@ -134,3 +135,49 @@ def set_all_seeds(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+
+
+def get_dataloaders_celeba_aquarter(batch_size, num_workers=0,
+                           train_transforms=None,
+                           test_transforms=None,
+                           download=True):
+
+    if train_transforms is None:
+        train_transforms = transforms.ToTensor()
+
+    if test_transforms is None:
+        test_transforms = transforms.ToTensor()
+
+    train_dataset = datasets.CelebA(root='data/celebA',
+                                    split='train',
+                                    transform=train_transforms,
+                                    download=download)
+
+    indices = list(range(0, len(train_dataset), 4))
+    train_dataset = Subset(train_dataset, indices)
+
+    valid_dataset = datasets.CelebA(root='data/celebA',
+                                    split='valid',
+                                    transform=test_transforms)
+
+    test_dataset = datasets.CelebA(root='data/celebA',
+                                   split='test',
+                                   transform=test_transforms)
+
+
+    train_loader = DataLoader(dataset=train_dataset,
+                              batch_size=batch_size,
+                              num_workers=num_workers,
+                              shuffle=True)
+
+    valid_loader = DataLoader(dataset=test_dataset,
+                             batch_size=batch_size,
+                             num_workers=num_workers,
+                             shuffle=False)
+    
+    test_loader = DataLoader(dataset=test_dataset,
+                             batch_size=batch_size,
+                             num_workers=num_workers,
+                             shuffle=False)
+
+    return train_loader, valid_loader, test_loader
