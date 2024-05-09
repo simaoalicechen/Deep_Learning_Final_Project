@@ -246,10 +246,12 @@ all_d_losses, all_g_losses = [], []
 all_real_scores, all_fake_scores = [], []
 all_real_accs, all_fake_accs = [], []
 
-# Path where the checkpoints are saved
+# TODO
+# each time, check what the latest saved epoch was and get it from the checkpoint, and then 
+# re-start training from that epoch
+# load checkpoint if previously saved. 
 checkpoint_path = 'savesR/checkpoint_epoch_390.pth'
 
-# Load the checkpoint
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
     model.generator.load_state_dict(checkpoint['generator_state_dict'])
@@ -259,8 +261,8 @@ if os.path.exists(checkpoint_path):
     print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
 
 start_epoch = checkpoint['epoch'] + 1 
-# if 'epoch' in checkpoint 
 print(start_epoch)
+
 # training codes partially from the original github
 for epoch in range(start_epoch, num_epochs+1):
     log_dict = {'train_generator_loss_per_batch': [],
@@ -408,6 +410,9 @@ for epoch in range(start_epoch, num_epochs+1):
 
     model.eval() 
     with torch.no_grad():
+        # TODO
+        # Change the bactch size here to produce more images whenever necessary
+        # batch size: the first parameter in noise
       if (epoch + 1) <=900:
         noise = torch.randn(8, opt.latent_dim, 1, 1).to(device) 
         fake = model.generator_forward(noise).detach().cpu()

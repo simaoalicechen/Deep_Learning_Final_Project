@@ -72,6 +72,10 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True)
         )
 
+        # Difference between Conv_Wgan2: we use all datasets and set them all as 128, 128
+        # Conv_Wgan: size (64, 64), every 4 images
+        # Conv_Wgan2: size (128, 128), every 4 images
+        # Conv_Wagn3: size(100, 100), every 4 imgaes 
         self.conv_blocks = nn.Sequential(
             nn.BatchNorm2d(128),
             nn.Conv2d(128, 128, 3, stride=1, padding=1),
@@ -181,6 +185,10 @@ os.makedirs(save_path, exist_ok=True)
 all_d_losses, all_g_losses = [], []
 all_real_scores, all_fake_scores = [], []
 all_real_accs, all_fake_accs = [], []
+
+# TODO
+# each time, check what the latest saved epoch was and get it from the checkpoint, and then 
+# re-start training from that epoch
 checkpoint_path = 'savesConvWgan128/checkpoint_epoch_245.pth'  
 
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
@@ -320,9 +328,10 @@ for epoch in range(start_epoch+1, opt.n_epochs):
     elapsed_minutes = elapsed_time / 60.0
     print(f"Epoch {epoch+1} took {elapsed_minutes:.2f} minutes.")
 
-    # generate and save fake images
-    # if (epoch+1) % 5 == 0 or (epoch+1) == 1:
     with torch.no_grad():
+      # TODO
+      # Change the bactch size here to produce more images whenever necessary        
+      # batch size: the first parameter in noise
       noise = torch.randn(16, opt.latent_dim).to(device)
       fake = generator(noise).detach().cpu()
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)

@@ -191,6 +191,22 @@ all_d_losses, all_g_losses = [], []
 all_real_scores, all_fake_scores = [], []
 all_real_accs, all_fake_accs = [], []
 
+# load checkpoint if previously saved. 
+# TODO
+# each time, check what the latest saved epoch was and get it from the checkpoint, and then 
+# re-start training from that epoch
+checkpoint_path = 'saves128/checkpoint_epoch_270.pth'
+
+if os.path.exists(checkpoint_path):
+    checkpoint = torch.load(checkpoint_path)
+    model.generator.load_state_dict(checkpoint['generator_state_dict'])
+    model.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+    optim_gen.load_state_dict(checkpoint['optimizer_G_state_dict'])
+    optim_discr.load_state_dict(checkpoint['optimizer_D_state_dict'])
+    print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
+
+start_epoch = checkpoint['epoch'] + 1 
+print(start_epoch)
 for epoch in range(0, num_epochs+1):
     print("128 image")
     log_dict = {'train_generator_loss_per_batch': [],
@@ -284,10 +300,7 @@ for epoch in range(0, num_epochs+1):
         real_accs.append(acc_real)
         fake_accs.append(acc_fake)
 
-            
-        # epoch_real_acc += acc_real
-        # epoch_fake_acc += acc_fake
-
+    
         # print batch loss, discriminator scores, and accuracy
         print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "
               f"[D loss: {discr_loss:.6f}] [G loss: {gener_loss:.6f}] "
@@ -342,6 +355,9 @@ for epoch in range(0, num_epochs+1):
 
     model.eval() 
     with torch.no_grad():
+        # TODO
+        # Change the bactch size here to produce more images whenever necessary
+        # batch size: the first parameter in noise
       noise = torch.randn(16,  opt.latent_dim, 1, 1).to(device) 
       fake = model.generator_forward(noise).detach().cpu()
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
