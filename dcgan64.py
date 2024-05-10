@@ -1,5 +1,5 @@
 # This is almost the same thing as dcgan_revisited.py, but it generated more images after 900 epochs. This is for report and comparison purposes. 
-
+# from torch.optim.lr_scheduler import StepLR
 import argparse
 import os
 import numpy as np
@@ -7,7 +7,7 @@ import zipfile
 import math
 import torch
 import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 from natsort import natsorted
 import torch.nn.functional as F
 from PIL import Image
@@ -33,8 +33,8 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 2000, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
+parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
+parser.add_argument("--batch_size", type=int, default= 128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
 # parser.add_argument("--lr", type=float, default=0.01, help="SGD: learning rate")
@@ -181,6 +181,9 @@ optim_gen = torch.optim.Adam(model.generator.parameters(),
 optim_discr = torch.optim.Adam(model.discriminator.parameters(),
                                betas=(opt.b1, opt.b2),
                                lr=opt.lr)
+# Assuming 'optim_gen' and 'optim_discr' are your generator and discriminator optimizers
+# scheduler_gen = StepLR(optim_gen, step_size=50, gamma=0.5)
+# scheduler_discr = StepLR(optim_discr, step_size=50, gamma=0.5)
 
 # With SGD and CosineAnnealingLR, at least, initially, it was bad: gradiant vanishing in Dis
 # download the data directly
@@ -250,7 +253,7 @@ all_real_accs, all_fake_accs = [], []
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
 # load checkpoint if previously saved. 
-checkpoint_path = 'savesR/checkpoint_epoch_390.pth'
+checkpoint_path = 'savesR/checkpoint_epoch_440.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -360,9 +363,15 @@ for epoch in range(start_epoch, num_epochs+1):
               f"[D loss: {discr_loss:.6f}] [G loss: {gener_loss:.6f}] "
               f"[D's scores on real images: {real_score:.6f}] [fake score: {fake_score:.6f}] "
               f"[D's accuracies on real images: {acc_real:.2%}] [fake images: {acc_fake:.2%}]")
+    
+    # After each epoch, update the learning rate
+    # scheduler_gen.step()
+    # scheduler_discr.step()
+    # print(f"Generator learning rate: {scheduler_gen.get_last_lr()[0]}")
+    # print(f"Discriminator learning rate: {scheduler_discr.get_last_lr()[0]}")
 
     # calculate average loss and scores for the current epoch
-    print(d_losses)
+    # print(d_losses)
     epoch_d_loss = sum(d_losses) / len(d_losses)
     epoch_g_loss = sum(g_losses) / len(g_losses)
     epoch_real_score = sum(real_scores) / len(real_scores)
@@ -381,8 +390,8 @@ for epoch in range(start_epoch, num_epochs+1):
     all_fake_accs.append(epoch_fake_acc)
 
     # save past data
-    if (epoch + 1) % 5 == 0 or (epoch + 1) == 1:
-        torch.save({
+    # if (epoch + 1) % 5 == 0 or (epoch + 1) == 1:
+    torch.save({
             'epoch': epoch,
             'generator_state_dict': model.generator.state_dict(), 
             'discriminator_state_dict': model.discriminator.state_dict(),  
@@ -394,7 +403,7 @@ for epoch in range(start_epoch, num_epochs+1):
             'fake_score': epoch_fake_score,     
             'real_acc': epoch_real_acc,            
             'fake_acc': epoch_fake_acc            
-        }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
+    }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
 
     # output training stats for the epoch
     print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "
@@ -414,7 +423,7 @@ for epoch in range(start_epoch, num_epochs+1):
         # Change the bactch size here to produce more images whenever necessary
         # batch size: the first parameter in noise
       if (epoch + 1) <=900:
-        noise = torch.randn(8, opt.latent_dim, 1, 1).to(device) 
+        noise = torch.randn(64, opt.latent_dim, 1, 1).to(device) 
         fake = model.generator_forward(noise).detach().cpu()
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.axis('off')

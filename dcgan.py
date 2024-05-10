@@ -248,4 +248,4 @@ for epoch in range(opt.n_epochs):
 
         batches_done = epoch * len(trainloader) + i
         if batches_done % opt.sample_interval == 0:
-            save_image(gen_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
+            save_image(gen_imgs.data[:25], "geese_images/%d.png" % batches_done, nrow=5, normalize=True)

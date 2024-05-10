@@ -32,8 +32,8 @@ os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=32, help="size of the batches")
-parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
+parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
+parser.add_argument("--lr", type=float, default=0.0001, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
 # parser.add_argument("--lr", type=float, default=0.01, help="SGD: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
@@ -207,7 +207,7 @@ if os.path.exists(checkpoint_path):
 
 start_epoch = checkpoint['epoch'] + 1 
 print(start_epoch)
-for epoch in range(0, num_epochs+1):
+for epoch in range(start_epoch, num_epochs+1):
     print("128 image")
     log_dict = {'train_generator_loss_per_batch': [],
                 'train_discriminator_loss_per_batch': [],
