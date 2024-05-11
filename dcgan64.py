@@ -253,7 +253,7 @@ all_real_accs, all_fake_accs = [], []
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
 # load checkpoint if previously saved. 
-checkpoint_path = 'savesR/checkpoint_epoch_694.pth'
+checkpoint_path = 'savesR/checkpoint_epoch_709.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)

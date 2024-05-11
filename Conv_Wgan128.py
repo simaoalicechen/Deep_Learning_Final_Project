@@ -213,6 +213,8 @@ print("start_epoch is: ", start_epoch)
 threshold = 0.5
 # training loop
 # training codes are partially from the source codes.
+
+accumulation_steps = 4
 for epoch in range(start_epoch+1, opt.n_epochs):
     d_losses, g_losses = [], []
     real_scores, fake_scores = [], []

@@ -134,18 +134,18 @@ transform = transforms.Compose([
 ])
 
 # dataloader = DataLoader(celeba_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=4)
-# train_loader, valid_loader, test_loader = get_dataloaders_celeba(
-#     batch_size=opt.batch_size,
-#     train_transforms=transform,
-#     test_transforms=transform,
-#     num_workers=4)
-dataset_obj = datasets.ImageFolder(data_root, transform)
-subset_obj = torch.utils.data.Subset(dataset_obj, list(range(0, len(dataset_obj), 10)))
-dataloader = torch.utils.data.DataLoader(subset_obj,
-    batch_size = opt.batch_size,
-    shuffle=True,
-    num_workers=20,
-)
+train_loader, valid_loader, test_loader = get_dataloaders_celeba(
+    batch_size=opt.batch_size,
+    train_transforms=transform,
+    test_transforms=transform,
+    num_workers=4)
+# dataset_obj = datasets.ImageFolder(data_root, transform)
+# subset_obj = torch.utils.data.Subset(dataset_obj, list(range(0, len(dataset_obj), 10)))
+# dataloader = torch.utils.data.DataLoader(subset_obj,
+#     batch_size = opt.batch_size,
+#     shuffle=True,
+#     num_workers=20,
+# )
 
 report_dir = "reportCW"
 os.makedirs(report_dir, exist_ok=True)
@@ -170,11 +170,32 @@ criterion = nn.BCEWithLogitsLoss()
 
 start_epoch = 0
 # start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc = load_checkpoint('path_to_checkpoint.pth', generator, discriminator, optimizer_G, optimizer_D)
-os.makedirs("reportCW/images", exist_ok=True)
+os.makedirs("reportConvWgan/images", exist_ok=True)
 
 # Path to save the models
-save_path = 'saves/'
+save_path = 'savesConvWgan/'
 os.makedirs(save_path, exist_ok=True)
+checkpoint_path = 'savesConvWgan/checkpoint_epoch_10.pth'  
+
+def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
+    checkpoint = torch.load(filepath)
+    generator.load_state_dict(checkpoint['generator_state_dict'])
+    discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+    optimizer_G.load_state_dict(checkpoint['optimizer_G_state_dict'])
+    optimizer_D.load_state_dict(checkpoint['optimizer_D_state_dict'])
+    start_epoch = checkpoint['epoch']
+    lossG = checkpoint['lossG']
+    lossD = checkpoint['lossD']
+    real_score = checkpoint['real_score']
+    fake_score = checkpoint['fake_score']
+    real_acc = checkpoint['real_acc']
+    fake_acc = checkpoint['fake_acc']
+    return start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc
+
+start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc = load_checkpoint(
+        checkpoint_path, generator, discriminator, optimizer_G, optimizer_D
+    )
+print("start_epoch is: ", start_epoch)
 
 # define parameters for metrics and graphs
 all_d_losses, all_g_losses = [], []
@@ -189,7 +210,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     real_accs, fake_accs = [], []
     num_batches = 0
     start_time = time.time()
-    for i, (real_images, _) in enumerate(dataloader):
+    for i, (real_images, _) in enumerate(train_loader):
         real_images = real_images.to(device)
         batch_size = real_images.size(0)
 
@@ -248,7 +269,7 @@ for epoch in range(start_epoch, opt.n_epochs):
 
         g_losses.append(g_loss.item())
         # print batch loss, discriminator scores, and accuracy
-        print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(dataloader)}] "
+        print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
               f"[D loss: {d_loss.item():.6f}] [G loss: {g_loss.item():.6f}] "
               f"[D's scores on real images: {real_score:.6f}] [fake score: {fake_score:.6f}] "
               f"[D's accuracies on real images: {real_acc:.4%}] [fake images: {fake_acc:.4%}]")
@@ -270,8 +291,8 @@ for epoch in range(start_epoch, opt.n_epochs):
     all_fake_accs.append(epoch_fake_acc)
 
     # save past data
-    if (epoch + 1) % 5 == 0:
-        torch.save({
+    # if (epoch + 1) % 5 == 0:
+    torch.save({
             'epoch': epoch,
             'generator_state_dict': generator.state_dict(),
             'discriminator_state_dict': discriminator.state_dict(),
@@ -286,7 +307,7 @@ for epoch in range(start_epoch, opt.n_epochs):
         }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
 
     # output training stats for the epoch
-    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(dataloader)}] "
+    print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
             f"[D loss: {epoch_d_loss:.6f}] [G loss: {epoch_g_loss:.6f}] "
             f"[D's epoch mean scores on real images: {epoch_real_score:.6f}] [fake images: {epoch_fake_score:.6f}] "
             f"[D's epoch mean accuracies on real images: {epoch_real_acc:.4%}] [fake images: {epoch_fake_acc:.4%}]")
@@ -299,29 +320,29 @@ for epoch in range(start_epoch, opt.n_epochs):
     print(f"Epoch {epoch+1} took {elapsed_minutes:.2f} minutes.")
 
     # generate and save fake images
-    if epoch+1 == 1:
-        with torch.no_grad():
-            noise = torch.randn(batch_size, opt.latent_dim).to(device)
+    # if epoch+1 == 1:
+    with torch.no_grad():
+            noise = torch.randn(128, opt.latent_dim).to(device)
             fake = generator(noise).detach().cpu()
             img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
             plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-            plt.savefig(os.path.join("reportCW/images", f"epoch_{epoch+1}_generated_images.png"))
+            plt.savefig(os.path.join("reportConvWgan/images", f"epoch_{epoch+1}_generated_images.png"))
             plt.close()
 
 
     # generate and save fake images
-    if (epoch+1) % 50 == 0:
-        with torch.no_grad():
-            noise = torch.randn(batch_size, opt.latent_dim).to(device)
-            fake = generator(noise).detach().cpu()
-            img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
-            plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-            plt.savefig(os.path.join("reportCW/images", f"epoch_{epoch+1}_generated_images.png"))
-            plt.close()
+    # if (epoch+1) % 50 == 0:
+    #     with torch.no_grad():
+    #         noise = torch.randn(batch_size, opt.latent_dim).to(device)
+    #         fake = generator(noise).detach().cpu()
+    #         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
+    #         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
+    #         plt.savefig(os.path.join("reportConvWgan/images", f"epoch_{epoch+1}_generated_images.png"))
+    #         plt.close()
 
-    directoryL = "reportCW/losses"
-    directoryS = "reportCW/scores"
-    directoryA = "reportCW/accuracies"
+    directoryL = "reportConvWgan/losses"
+    directoryS = "reportConvWgan/scores"
+    directoryA = "reportConvWgan/accuracies"
     if not os.path.exists(directoryL):
         os.makedirs(directoryL)
     if not os.path.exists(directoryA):
@@ -329,7 +350,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     if not os.path.exists(directoryS):
         os.makedirs(directoryS)
 
-    if (epoch+1) % 50 == 0:
+    if (epoch+1) % 30 == 0 or (epoch+1) == 1:
         # losses graph
         plt.figure(figsize=(10, 5))
         plt.plot(all_d_losses, label='Discriminator Loss')
@@ -338,7 +359,7 @@ for epoch in range(start_epoch, opt.n_epochs):
         plt.ylabel('Loss')
         plt.title('Discriminator and Generator Losses')
         plt.legend()
-        plt.savefig(os.path.join("reportCW/losses", f"losses_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("reportConvWgan/losses", f"losses_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # accuracies graph
@@ -349,7 +370,7 @@ for epoch in range(start_epoch, opt.n_epochs):
         plt.ylabel('Accuracies')
         plt.title("Discriminator's Accuracies of Real and Fake Images")
         plt.legend()
-        plt.savefig(os.path.join("reportCW/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("reportConvWgan/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # scores
@@ -360,5 +381,5 @@ for epoch in range(start_epoch, opt.n_epochs):
         plt.ylabel('Scores')
         plt.title('Discriminator Scores on real and fake images')
         plt.legend()
-        plt.savefig(os.path.join("reportCW/scores", f"scores_graph_epoch_{epoch + 1}.png"))
+        plt.savefig(os.path.join("reportConvWgan/scores", f"scores_graph_epoch_{epoch + 1}.png"))
         plt.close()
