@@ -189,7 +189,7 @@ all_real_accs, all_fake_accs = [], []
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'savesConvWgan128/checkpoint_epoch_245.pth'  
+checkpoint_path = 'savesConvWgan128/checkpoint_epoch_315.pth'  
 
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
     checkpoint = torch.load(filepath)
@@ -300,8 +300,8 @@ for epoch in range(start_epoch+1, opt.n_epochs):
     all_fake_accs.append(epoch_fake_acc)
 
     # save past data
-    if (epoch + 1) % 5 == 0 or (epoch+1) == 1:
-        torch.save({
+    # if (epoch + 1) % 5 == 0 or (epoch+1) == 1:
+    torch.save({
             'epoch': epoch,
             'generator_state_dict': generator.state_dict(),
             'discriminator_state_dict': discriminator.state_dict(),

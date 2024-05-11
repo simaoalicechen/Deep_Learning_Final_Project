@@ -195,7 +195,7 @@ all_real_accs, all_fake_accs = [], []
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'saves128/checkpoint_epoch_270.pth'
+checkpoint_path = 'saves128/checkpoint_epoch_425.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -326,8 +326,8 @@ for epoch in range(start_epoch, num_epochs+1):
     all_fake_accs.append(epoch_fake_acc)
 
     # save past data
-    if (epoch + 1) % 5 == 0 or (epoch + 1) == 1:
-        torch.save({
+    # if (epoch + 1) % 5 == 0 or (epoch + 1) == 1:
+    torch.save({
             'epoch': epoch,
             'generator_state_dict': model.generator.state_dict(), 
             'discriminator_state_dict': model.discriminator.state_dict(),  
@@ -339,7 +339,7 @@ for epoch in range(start_epoch, num_epochs+1):
             'fake_score': epoch_fake_score,     
             'real_acc': epoch_real_acc,            
             'fake_acc': epoch_fake_acc            
-        }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
+    }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
 
     # output training stats for the epoch
     print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {batch_idx+1}/{len(train_loader)}] "

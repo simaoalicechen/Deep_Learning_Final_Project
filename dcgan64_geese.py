@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default = 100000, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default= 128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
@@ -269,19 +269,19 @@ all_real_accs, all_fake_accs = [], []
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
 # load checkpoint if previously saved. 
-# checkpoint_path = 'savesGeese/checkpoint_epoch_440.pth'
+checkpoint_path = 'savesGeese/checkpoint_epoch_1000.pth'
 
-# if os.path.exists(checkpoint_path):
-#     checkpoint = torch.load(checkpoint_path)
-#     model.generator.load_state_dict(checkpoint['generator_state_dict'])
-#     model.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
-#     optim_gen.load_state_dict(checkpoint['optimizer_G_state_dict'])
-#     optim_discr.load_state_dict(checkpoint['optimizer_D_state_dict'])
-#     print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
+if os.path.exists(checkpoint_path):
+    checkpoint = torch.load(checkpoint_path)
+    model.generator.load_state_dict(checkpoint['generator_state_dict'])
+    model.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+    optim_gen.load_state_dict(checkpoint['optimizer_G_state_dict'])
+    optim_discr.load_state_dict(checkpoint['optimizer_D_state_dict'])
+    print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
 
-# start_epoch = checkpoint['epoch'] + 1 
-# print(start_epoch)
-start_epoch = 0
+start_epoch = checkpoint['epoch'] + 1 
+print(start_epoch)
+# start_epoch = 0
 # training codes partially from the original github
 for epoch in range(start_epoch, num_epochs+1):
     log_dict = {'train_generator_loss_per_batch': [],
