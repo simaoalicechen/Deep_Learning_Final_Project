@@ -332,7 +332,7 @@ for epoch in range(start_epoch+1, opt.n_epochs):
       # TODO
       # Change the bactch size here to produce more images whenever necessary        
       # batch size: the first parameter in noise
-      noise = torch.randn(16, opt.latent_dim).to(device)
+      noise = torch.randn(128, opt.latent_dim).to(device)
       fake = generator(noise).detach().cpu()
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
       plt.imshow(np.transpose(img_grid, (1, 2, 0)))

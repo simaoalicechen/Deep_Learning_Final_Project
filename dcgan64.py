@@ -253,7 +253,7 @@ all_real_accs, all_fake_accs = [], []
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
 # load checkpoint if previously saved. 
-checkpoint_path = 'savesR/checkpoint_epoch_446.pth'
+checkpoint_path = 'savesR/checkpoint_epoch_694.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -422,17 +422,17 @@ for epoch in range(start_epoch, num_epochs+1):
         # TODO
         # Change the bactch size here to produce more images whenever necessary
         # batch size: the first parameter in noise
-      if (epoch + 1) <=900:
-        noise = torch.randn(64, opt.latent_dim, 1, 1).to(device) 
-        fake = model.generator_forward(noise).detach().cpu()
-        img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
-        plt.axis('off')
-        plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-        plt.savefig(os.path.join("reportR2/images", f"epoch_{epoch+1}_generated_images.png"))
-        plt.close()
-        model.train() 
-      else:
-        noise = torch.randn(100, opt.latent_dim, 1, 1).to(device) 
+    #   if (epoch + 1) <=900:
+    #     noise = torch.randn(64, opt.latent_dim, 1, 1).to(device) 
+    #     fake = model.generator_forward(noise).detach().cpu()
+    #     img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
+    #     plt.axis('off')
+    #     plt.imshow(np.transpose(img_grid, (1, 2, 0)))
+    #     plt.savefig(os.path.join("reportR2/images", f"epoch_{epoch+1}_generated_images.png"))
+    #     plt.close()
+    #     model.train() 
+    #   else:
+        noise = torch.randn(128, opt.latent_dim, 1, 1).to(device) 
         fake = model.generator_forward(noise).detach().cpu()
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.axis('off')
