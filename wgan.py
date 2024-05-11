@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 50, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
@@ -158,6 +158,31 @@ all_d_losses, all_g_losses = [], []
 all_real_scores, all_fake_scores = [], []
 all_real_accs, all_fake_accs = [], []
 
+# TODO
+# each time, check what the latest saved epoch was and get it from the checkpoint, and then 
+# re-start training from that epoch
+# checkpoint_path = 'savesWgan/checkpoint_epoch_315.pth'  
+
+# def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
+#     checkpoint = torch.load(filepath)
+#     generator.load_state_dict(checkpoint['generator_state_dict'])
+#     discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+#     optimizer_G.load_state_dict(checkpoint['optimizer_G_state_dict'])
+#     optimizer_D.load_state_dict(checkpoint['optimizer_D_state_dict'])
+#     start_epoch = checkpoint['epoch']
+#     lossG = checkpoint['lossG']
+#     lossD = checkpoint['lossD']
+#     real_score = checkpoint['real_score']
+#     fake_score = checkpoint['fake_score']
+#     real_acc = checkpoint['real_acc']
+#     fake_acc = checkpoint['fake_acc']
+#     return start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc
+
+# start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc = load_checkpoint(
+#         checkpoint_path, generator, discriminator, optimizer_G, optimizer_D
+#     )
+# print("start_epoch is: ", start_epoch)
+
 threshold = 0.5
 # training loop
 for epoch in range(opt.n_epochs):
@@ -248,6 +273,21 @@ for epoch in range(opt.n_epochs):
     all_real_accs.append(epoch_real_acc)
     all_fake_accs.append(epoch_fake_acc)
 
+    torch.save({
+            'epoch': epoch,
+            'generator_state_dict': generator.state_dict(),
+            'discriminator_state_dict': discriminator.state_dict(),
+            'optimizer_G_state_dict': optimizer_G.state_dict(),
+            'optimizer_D_state_dict': optimizer_D.state_dict(),
+            'lossG': g_loss.item(),
+            'lossD': d_loss.item(),
+            'real_score': epoch_real_score,       
+            'fake_score': epoch_fake_score,     
+            'real_acc': epoch_real_acc,            
+            'fake_acc': epoch_fake_acc            
+    }, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
+
+
     # Output training stats for the epoch
     print(f"[Epoch {epoch+1}/{opt.n_epochs}] [Batch {i+1}/{len(train_loader)}] "
             f"[D loss: {epoch_d_loss:.6f}] [G loss: {epoch_g_loss:.6f}] "
@@ -263,7 +303,7 @@ for epoch in range(opt.n_epochs):
 
     # Generate and save fake images
     with torch.no_grad():
-        noise = torch.randn(batch_size, opt.latent_dim).to(device)
+        noise = torch.randn(128, opt.latent_dim).to(device)
         fake = generator(noise).detach().cpu()
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
