@@ -13,7 +13,7 @@ def load_images_from_file(file_path, index, transition_index=112):
     if index <= transition_index:
         rows, cols = 2, 8  
     else:
-        rows, cols = 8, 8 
+        break
     
     single_width = img_width // cols
     single_height = img_height // rows
@@ -48,6 +48,35 @@ for index, file_name in enumerate(files):
         score = metric.compute()
         average_scores.append(score)
         print("checking ", len(average_scores))
+
+
+scores_array = np.array(average_scores)
+median_score = np.median(average_scores)
+mean_score = np.mean(average_scores)
+std_deviation = np.std(average_scores)
+top_10_percent = np.percentile(average_scores, 90)
+lowest_10_percent = np.percentile(average_scores, 10)
+
+print(f"Median of All Inception Scores: {median_score}")
+print(f"Mean of All Inception Scores: {mean_score}")
+print(f"Standard Deviation of All Scores: {std_deviation}")
+print(f"Top 10% of All Inception Scores: {top_10_percent}")
+print(f"Lowest 10% of All Inception Scores: {lowest_10_percent}")
+
+# dir
+output_dir = 'reportR2/ISScore'
+os.makedirs(output_dir, exist_ok=True)
+
+output_file_path = os.path.join(output_dir, 'output_statistics.txt')
+with open(output_file_path, 'w') as f:
+    print(f"Median of All Inception Scores: {median_score}", file=f)
+    print(f"Mean of All Inception Scores: {mean_score}", file=f)
+    print(f"Standard Deviation of All Scores: {std_deviation}", file=f)
+    print(f"Top 10% of All Inception Scores: {top_10_percent}", file=f)
+    print(f"Lowest 10% of All Inception Scores: {lowest_10_percent}", file=f)
+print(f"Statistics have been saved to '{output_file_path}'")
+
+
 
 output_dir = 'reportR2/ISScore'
 os.makedirs(output_dir, exist_ok=True)

@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 #
 
 #load images so that each image can be individually extracted and then processed later
@@ -28,30 +29,56 @@ def load_images_from_file(file_path, image_count=16):
 # transform each extracted image from the epoch batchs one by one
 metric = InceptionScore(output_transform=lambda x: x, device="cuda" if torch.cuda.is_available() else "cpu")
 
-directory_path = 'reportR128/images'
+directory_path = 'reportCW/images'
 average_scores = []
+# all_scores  = []
 # process each file
 for file_name in sorted(os.listdir(directory_path)):
     file_path = os.path.join(directory_path, file_name)
     if file_path.endswith('.png'):
         images = load_images_from_file(file_path)
-        
         image_tensors = [torch.tensor(np.array(image)).permute(2, 0, 1).unsqueeze(0).float().div(255) for image in images]
         image_tensors = torch.cat(image_tensors, dim=0) 
-        
         data_loader = torch.utils.data.DataLoader(image_tensors, batch_size=16)
-        
         for images in data_loader:
             metric.update(images) 
-        
         score = metric.compute()
+        # all_scores.append(score)
         average_scores.append(score)
-        print("checking ", len(average_scores))
+        print("checking avergae scores", len(average_scores))
+
+# Statistical analysis on all collected scores
+
+scores_array = np.array(average_scores)
+median_score = np.median(average_scores)
+mean_score = np.mean(average_scores)
+std_deviation = np.std(average_scores)
+top_10_percent = np.percentile(average_scores, 90)
+lowest_10_percent = np.percentile(average_scores, 10)
+
+
+print(f"Median of All Inception Scores: {median_score}")
+print(f"Mean of All Inception Scores: {mean_score}")
+print(f"Standard Deviation of All Scores: {std_deviation}")
+print(f"Top 10% of All Inception Scores: {top_10_percent}")
+print(f"Lowest 10% of All Inception Scores: {lowest_10_percent}")
 
 
 # dir
-output_dir = 'reportR128/ISScore'
+output_dir = 'reportCW/ISScore'
 os.makedirs(output_dir, exist_ok=True)
+
+output_file_path = os.path.join(output_dir, 'output_statistics.txt')
+with open(output_file_path, 'w') as f:
+    print(f"Median of All Inception Scores: {median_score}", file=f)
+    print(f"Mean of All Inception Scores: {mean_score}", file=f)
+    print(f"Standard Deviation of All Scores: {std_deviation}", file=f)
+    print(f"Top 10% of All Inception Scores: {top_10_percent}", file=f)
+    print(f"Lowest 10% of All Inception Scores: {lowest_10_percent}", file=f)
+
+print(f"Statistics have been saved to '{output_file_path}'")
+
+
 
 # plot and save the graph
 plt.figure(figsize=(10, 5))
