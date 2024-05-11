@@ -182,8 +182,8 @@ start_time = time.time()
 logging_interval = 200
 num_epochs = opt.n_epochs
 
-os.makedirs("reportR128/images", exist_ok=True)
-save_path = 'saves128/'
+os.makedirs("report_DCGAN128_CelebA/images", exist_ok=True)
+save_path = 'saves_DCGAN128/'
 os.makedirs(save_path, exist_ok=True)
 
 # define parameters for metrics and graphs
@@ -195,7 +195,7 @@ all_real_accs, all_fake_accs = [], []
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'saves128/checkpoint_epoch_451.pth'
+checkpoint_path = 'saves_DCGAN128/checkpoint_epoch_451.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -363,13 +363,13 @@ for epoch in range(start_epoch, num_epochs+1):
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
       plt.axis('off')
       plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-      plt.savefig(os.path.join("reportR128/images", f"epoch_{epoch+1}_generated_images.png"))
+      plt.savefig(os.path.join("report_DCGAN128_CelebA/images", f"epoch_{epoch+1}_generated_images.png"))
       plt.close()
       model.train() 
 
-    directoryL = "reportR128/losses"
-    directoryS = "reportR128/scores"
-    directoryA = "reportR128/accuracies"
+    directoryL = "report_DCGAN128_CelebA/losses"
+    directoryS = "report_DCGAN128_CelebA/scores"
+    directoryA = "report_DCGAN128_CelebA/accuracies"
     if not os.path.exists(directoryL):
         os.makedirs(directoryL)
     if not os.path.exists(directoryA):
@@ -435,7 +435,7 @@ for epoch in range(start_epoch, num_epochs+1):
         plt.ylabel('Loss')
         plt.title('Discriminator and Generator Losses')
         plt.legend()
-        plt.savefig(os.path.join("reportR128/losses", f"losses_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("report_DCGAN128_CelebA/losses", f"losses_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # accuracies graph
@@ -446,7 +446,7 @@ for epoch in range(start_epoch, num_epochs+1):
         plt.ylabel('Accuracies')
         plt.title("Discriminator's Accuracies of Real and Fake Images")
         plt.legend()
-        plt.savefig(os.path.join("reportR128/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("report_DCGAN128_CelebA/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # scores
@@ -457,5 +457,5 @@ for epoch in range(start_epoch, num_epochs+1):
         plt.ylabel('Scores')
         plt.title('Discriminator Scores on real and fake images')
         plt.legend()
-        plt.savefig(os.path.join("reportR128/scores", f"scores_graph_epoch_{epoch + 1}.png"))
+        plt.savefig(os.path.join("report_DCGAN128_CelebA/scores", f"scores_graph_epoch_{epoch + 1}.png"))
         plt.close()

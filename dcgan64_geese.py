@@ -180,9 +180,6 @@ optim_gen = torch.optim.Adam(model.generator.parameters(),
 optim_discr = torch.optim.Adam(model.discriminator.parameters(),
                                betas=(opt.b1, opt.b2),
                                lr=opt.lr)
-# Assuming 'optim_gen' and 'optim_discr' are your generator and discriminator optimizers
-# scheduler_gen = StepLR(optim_gen, step_size=50, gamma=0.5)
-# scheduler_discr = StepLR(optim_discr, step_size=50, gamma=0.5)
 
 # With SGD and CosineAnnealingLR, at least, initially, it was bad: gradiant vanishing in Dis
 # download the data directly
@@ -255,9 +252,9 @@ start_time = time.time()
 logging_interval = 200
 num_epochs = opt.n_epochs
 
-os.makedirs("reportGeese/images", exist_ok=True)
+os.makedirs("reports_DCGAN64_Geese/images", exist_ok=True)
 # Path to save the models
-save_path = 'savesGeese/'
+save_path = 'saves_Geese/'
 os.makedirs(save_path, exist_ok=True)
 
 # define parameters for metrics and graphs
@@ -269,7 +266,7 @@ all_real_accs, all_fake_accs = [], []
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
 # load checkpoint if previously saved. 
-checkpoint_path = 'savesGeese/checkpoint_epoch_1000.pth'
+checkpoint_path = 'saves_Geese/checkpoint_epoch_1000.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -444,7 +441,7 @@ for epoch in range(start_epoch, num_epochs+1):
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.axis('off')
         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-        plt.savefig(os.path.join("reportGeese/images", f"epoch_{epoch+1}_generated_images.png"))
+        plt.savefig(os.path.join("reports_DCGAN64_Geese/images", f"epoch_{epoch+1}_generated_images.png"))
         plt.close()
         model.train() 
       else:
@@ -453,14 +450,14 @@ for epoch in range(start_epoch, num_epochs+1):
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.axis('off')
         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-        plt.savefig(os.path.join("reportGeese/images", f"epoch_{epoch+1}_generated_images.png"))
+        plt.savefig(os.path.join("reports_DCGAN64_Geese/images", f"epoch_{epoch+1}_generated_images.png"))
         plt.close()
         model.train() 
 
 
-    directoryL = "reportGeese/losses"
-    directoryS = "reportGeese/scores"
-    directoryA = "reportGeese/accuracies"
+    directoryL = "reports_DCGAN64_Geese/losses"
+    directoryS = "reports_DCGAN64_Geese/scores"
+    directoryA = "reports_DCGAN64_Geese/accuracies"
     if not os.path.exists(directoryL):
         os.makedirs(directoryL)
     if not os.path.exists(directoryA):
@@ -525,7 +522,7 @@ for epoch in range(start_epoch, num_epochs+1):
         plt.ylabel('Loss')
         plt.title('Discriminator and Generator Losses')
         plt.legend()
-        plt.savefig(os.path.join("reportGeese/losses", f"losses_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("reports_DCGAN64_Geese/losses", f"losses_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # accuracies graph
@@ -536,7 +533,7 @@ for epoch in range(start_epoch, num_epochs+1):
         plt.ylabel('Accuracies')
         plt.title("Discriminator's Accuracies of Real and Fake Images")
         plt.legend()
-        plt.savefig(os.path.join("reportGeese/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
+        plt.savefig(os.path.join("reports_DCGAN64_Geese/accuracies", f"accuracy_graph_epoch_{epoch+1}.png"))
         plt.close()
 
         # scores
@@ -547,5 +544,5 @@ for epoch in range(start_epoch, num_epochs+1):
         plt.ylabel('Scores')
         plt.title('Discriminator Scores on real and fake images')
         plt.legend()
-        plt.savefig(os.path.join("reportGeese/scores", f"scores_graph_epoch_{epoch + 1}.png"))
+        plt.savefig(os.path.join("reports_DCGAN64_Geese/scores", f"scores_graph_epoch_{epoch + 1}.png"))
         plt.close()
