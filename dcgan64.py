@@ -181,11 +181,10 @@ optim_gen = torch.optim.Adam(model.generator.parameters(),
 optim_discr = torch.optim.Adam(model.discriminator.parameters(),
                                betas=(opt.b1, opt.b2),
                                lr=opt.lr)
-# Assuming 'optim_gen' and 'optim_discr' are your generator and discriminator optimizers
 # scheduler_gen = StepLR(optim_gen, step_size=50, gamma=0.5)
 # scheduler_discr = StepLR(optim_discr, step_size=50, gamma=0.5)
 
-# With SGD and CosineAnnealingLR, at least, initially, it was bad: gradiant vanishing in Dis
+# with SGD and CosineAnnealingLR, at least, initially, it was bad: gradiant vanishing in Dis
 # download the data directly
 data_root = 'data/celeba'
 dataset_folder = f'{data_root}'
@@ -253,7 +252,7 @@ all_real_accs, all_fake_accs = [], []
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
 # load checkpoint if previously saved. 
-checkpoint_path = 'saves_DCGAN64/checkpoint_epoch_709.pth'
+checkpoint_path = 'saves_DCGAN64/checkpoint_epoch_920.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -432,7 +431,7 @@ for epoch in range(start_epoch, num_epochs+1):
     #     plt.close()
     #     model.train() 
     #   else:
-        noise = torch.randn(128, opt.latent_dim, 1, 1).to(device) 
+        noise = torch.randn(64, opt.latent_dim, 1, 1).to(device) 
         fake = model.generator_forward(noise).detach().cpu()
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.axis('off')

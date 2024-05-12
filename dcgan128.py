@@ -195,7 +195,7 @@ all_real_accs, all_fake_accs = [], []
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'saves_DCGAN128/checkpoint_epoch_451.pth'
+checkpoint_path = 'saves_DCGAN128/checkpoint_epoch_594.pth'
 
 if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
@@ -358,7 +358,7 @@ for epoch in range(start_epoch, num_epochs+1):
         # TODO
         # Change the bactch size here to produce more images whenever necessary
         # batch size: the first parameter in noise
-      noise = torch.randn(128,  opt.latent_dim, 1, 1).to(device) 
+      noise = torch.randn(64,  opt.latent_dim, 1, 1).to(device) 
       fake = model.generator_forward(noise).detach().cpu()
       img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
       plt.axis('off')
