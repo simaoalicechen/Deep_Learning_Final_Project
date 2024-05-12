@@ -29,7 +29,7 @@ def load_images_from_file(file_path, image_count=64):
 # transform each extracted image from the epoch batchs one by one
 metric = InceptionScore(output_transform=lambda x: x, device="cuda" if torch.cuda.is_available() else "cpu")
 
-directory_path = 'report_DCGAN64_CelebA/Tests2'
+directory_path = 'report_DCGAN64_CelebA/Tests'
 average_scores = []
 # all_scores  = []
 # process each file

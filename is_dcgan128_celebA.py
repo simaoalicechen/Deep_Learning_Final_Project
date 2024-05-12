@@ -13,14 +13,14 @@ import numpy as np
 #load images so that each image can be individually extracted and then processed later
 # each png file probably has more than one image depending on how each model saved the file
 # in the past
-def load_images_from_file(file_path, image_count=16):
+def load_images_from_file(file_path, image_count=64):
     img = Image.open(file_path).convert('RGB')  
     img_width, img_height = img.size
     single_width = img_width // 8
-    single_height = img_height // 2
+    single_height = img_height // 8
     images = []
     # TODO, needs to change the col and row, depending on how each model output their images
-    for i in range(2):  
+    for i in range(8):  
         for j in range(8): 
             box = (j * single_width, i * single_height, (j + 1) * single_width, (i + 1) * single_height)
             images.append(img.crop(box).resize((299, 299)))  
@@ -29,7 +29,7 @@ def load_images_from_file(file_path, image_count=16):
 # transform each extracted image from the epoch batchs one by one
 metric = InceptionScore(output_transform=lambda x: x, device="cuda" if torch.cuda.is_available() else "cpu")
 
-directory_path = 'report_DCGAN128_CelebA/Tests'
+directory_path = 'report_DCGAN128_CelebA/tests'
 average_scores = []
 # all_scores  = []
 # process each file
