@@ -27,7 +27,7 @@ from dcgan_model import DCGAN
 from utils import load_dataset, get_dataloaders_celeba, set_all_seeds, set_deterministic
 from helper_train import train_gan_v1
 from helper_plotting import plot_multiple_training_losses, plot_multiple_training_accuracies, plot_accuracy_per_epoch, plot_multiple_training_accuracies
-from checkpoint import load_checkpoint
+# from checkpoint import load_checkpoint
 import matplotlib.pyplot as plt
 
 os.makedirs("images", exist_ok=True)
@@ -147,7 +147,7 @@ train_loader, valid_loader, test_loader = get_dataloaders_celeba(
 #     num_workers=20,
 # )
 
-report_dir = "report_ConvWgan64_CelebA"
+report_dir = "report_WGAN64_CelebA"
 os.makedirs(report_dir, exist_ok=True)
 
 # initialize as tensor, to avoid no .item() error
@@ -155,7 +155,7 @@ loss_real = torch.tensor(0.0)
 loss_fake = torch.tensor(0.0)
 loss_G = torch.tensor(0.0)
 
-num_epochs = 50
+# num_epochs = 50
 
 # generator and discriminator
 generator = Generator(100, img_shape).to(device)
@@ -175,7 +175,7 @@ os.makedirs("report_ConvWgan64_CelebA/images", exist_ok=True)
 # Path to save the models
 save_path = 'saves_ConvWgan64/'
 os.makedirs(save_path, exist_ok=True)
-checkpoint_path = 'saves_ConvWgan64/checkpoint_epoch_10.pth'  
+checkpoint_path = 'saves_ConvWgan64/checkpoint_epoch_299.pth'  
 
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
     checkpoint = torch.load(filepath)
@@ -322,7 +322,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     # generate and save fake images
     # if epoch+1 == 1:
     with torch.no_grad():
-            noise = torch.randn(128, opt.latent_dim).to(device)
+            noise = torch.randn(64, opt.latent_dim).to(device)
             fake = generator(noise).detach().cpu()
             img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
             plt.imshow(np.transpose(img_grid, (1, 2, 0)))

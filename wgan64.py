@@ -165,7 +165,7 @@ os.makedirs(save_path, exist_ok=True)
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'saves_WGAN64/checkpoint_epoch_12.pth'  
+checkpoint_path = 'saves_WGAN64/checkpoint_epoch_104.pth'  
 
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
     checkpoint = torch.load(filepath)
@@ -303,11 +303,11 @@ for epoch in range(start_epoch, opt.n_epochs):
 
     # generate and save fake images
     with torch.no_grad():
-        noise = torch.randn(128, opt.latent_dim).to(device)
+        noise = torch.randn(64, opt.latent_dim).to(device)
         fake = generator(noise).detach().cpu()
         img_grid = torchvision.utils.make_grid(fake, padding=2, normalize=True)
         plt.imshow(np.transpose(img_grid, (1, 2, 0)))
-        plt.savefig(os.path.join("report_WGAN64_CelebA", f"epoch_{epoch+1}_generated_images.png"))
+        plt.savefig(os.path.join("report_WGAN64_CelebA/images", f"epoch_{epoch+1}_generated_images.png"))
         plt.close()
 
     # define the directory path
