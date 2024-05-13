@@ -1,5 +1,5 @@
-Median of All FID Scores: 50.59608459472656
-Mean of All FID Scores: 50.69149398803711
-Standard Deviation of All FID Scores: 6.095504283905029
-Top 10% of All FID Scores: 57.42020797729492
-Lowest 10% of All FID Scores: 42.53382110595703
+Median of All FID Scores: 51.8331184387207
+Mean of All FID Scores: 52.184810638427734
+Standard Deviation of All FID Scores: 6.503989219665527
+Top 10% of All FID Scores: 59.910831451416016
+Lowest 10% of All FID Scores: 45.543365478515625
