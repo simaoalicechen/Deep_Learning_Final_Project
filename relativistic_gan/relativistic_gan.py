@@ -18,7 +18,7 @@ os.makedirs("images", exist_ok=True)
 os.makedirs("saved_models", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default=1000, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default=91, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=512, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
@@ -109,7 +109,7 @@ transform = transforms.Compose([
 ])
 
 dataset_obj = datasets.ImageFolder(data_root, transform)
-subset_obj = torch.utils.data.Subset(dataset_obj, list(range(0, len(dataset_obj), 2)))
+subset_obj = torch.utils.data.Subset(dataset_obj, list(range(0, len(dataset_obj), 4)))
 
 dataloader = torch.utils.data.DataLoader(subset_obj,
     batch_size = opt.batch_size,
@@ -121,7 +121,8 @@ dataloader = torch.utils.data.DataLoader(subset_obj,
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-
+g_loss_list = []
+d_loss_list = []
 Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
 # ----------
@@ -185,6 +186,9 @@ for epoch in range(opt.n_epochs):
 
         d_loss.backward()
         optimizer_D.step()
+        
+        g_loss_list.append(g_loss)
+        d_loss_list.append(d_loss)
 
         print(
             "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
@@ -202,7 +206,7 @@ for epoch in range(opt.n_epochs):
             'dis_state_dict': discriminator.state_dict(),
             'gen_opt': optimizer_G.state_dict(),
             'dis_opt': optimizer_D.state_dict(),
-            'g_loss': g_loss,
-            'd_loss': d_loss, 
+            'g_loss': g_loss_list,
+            'd_loss': d_loss_list, 
         }, 'saved_models/checkpoint.pth')
 
