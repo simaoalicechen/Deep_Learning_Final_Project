@@ -165,7 +165,7 @@ os.makedirs(save_path, exist_ok=True)
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'saves_WGAN64/checkpoint_epoch_104.pth'  
+checkpoint_path = 'saves_WGAN64/checkpoint_epoch_131.pth'  
 
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
     checkpoint = torch.load(filepath)

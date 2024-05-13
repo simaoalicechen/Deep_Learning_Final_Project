@@ -6,6 +6,9 @@ from ignite.engine import *
 from ignite.handlers import *
 from ignite.metrics import *
 from ignite.metrics.regression import *
+from ignite.handlers import *
+from ignite.metrics import *
+from ignite.metrics.regression import *
 from torchmetrics.image.fid import FrechetInceptionDistance
 from ignite.utils import *
 from PIL import Image

@@ -1,5 +1,5 @@
-Median of All Inception Scores: 1.496543955488319
-Mean of All Inception Scores: 1.50111880293998
-Standard Deviation of All Scores: 0.059631229357497574
-Top 10% of All Inception Scores: 1.5793664098096005
-Lowest 10% of All Inception Scores: 1.4230660834552196
+Median of All Inception Scores: 1.7606923431704982
+Mean of All Inception Scores: 1.7863013688753107
+Standard Deviation of All Scores: 0.16843724859354722
+Top 10% of All Inception Scores: 1.9782593490477445
+Lowest 10% of All Inception Scores: 1.6042537423896457
