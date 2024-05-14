@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default = 3000, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default = 1000, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=128, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 # parser.add_argument("--lr", type=float, default=0.0002, help="SGD: learning rate")
@@ -165,8 +165,7 @@ os.makedirs(save_path, exist_ok=True)
 # TODO
 # each time, check what the latest saved epoch was and get it from the checkpoint, and then 
 # re-start training from that epoch
-checkpoint_path = 'saves_WGAN64/checkpoint_epoch_131.pth'  
-
+# checkpoint_path = 'saves_WGAN64/checkpoint_epoch_90.pth'  
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
     checkpoint = torch.load(filepath)
     generator.load_state_dict(checkpoint['generator_state_dict'])
@@ -174,22 +173,30 @@ def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D
     optimizer_G.load_state_dict(checkpoint['optimizer_G_state_dict'])
     optimizer_D.load_state_dict(checkpoint['optimizer_D_state_dict'])
     start_epoch = checkpoint['epoch']
-    lossG = checkpoint['lossG']
-    lossD = checkpoint['lossD']
-    real_score = checkpoint['real_score']
-    fake_score = checkpoint['fake_score']
-    real_acc = checkpoint['real_acc']
-    fake_acc = checkpoint['fake_acc']
-    return start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc
+    all_d_losses = checkpoint['all_d_losses']
+    all_g_losses = checkpoint['all_g_losses']
+    all_real_scores = checkpoint['all_real_scores']
+    all_fake_scores = checkpoint['all_fake_scores']
+    all_real_accs = checkpoint['all_real_accs']
+    all_fake_accs = checkpoint['all_fake_accs']
+    return start_epoch, all_d_losses, all_g_losses, all_real_scores, all_fake_scores, all_real_accs, all_fake_accs
 
-start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc = load_checkpoint(
-        checkpoint_path, generator, discriminator, optimizer_G, optimizer_D
-    )
-print("start_epoch is: ", start_epoch)
+# if starting_checkpoint:
+#     start_epoch, all_d_losses, all_g_losses, all_real_scores, all_fake_scores, all_real_accs, all_fake_accs = load_checkpoint(
+#         checkpoint_path, generator, discriminator, optimizer_G, optimizer_D
+#     )
+# else:
+#     start_epoch = 0
+#     all_d_losses, all_g_losses, all_real_scores, all_fake_scores, all_real_accs, all_fake_accs = [], [], [], [], [], []
+
+# start_epoch, lossG, lossD, real_score, fake_score, real_acc, fake_acc = load_checkpoint(
+#         checkpoint_path, generator, discriminator, optimizer_G, optimizer_D
+#     )
+# print("start_epoch is: ", start_epoch)
 
 threshold = 0.5
 # training loop
-for epoch in range(start_epoch, opt.n_epochs):
+for epoch in range(0, opt.n_epochs):
     d_losses, g_losses = [], []
     real_scores, fake_scores = [], []
     real_accs, fake_accs = [], []
@@ -323,7 +330,7 @@ for epoch in range(start_epoch, opt.n_epochs):
     if not os.path.exists(directoryS):
         os.makedirs(directoryS)
 
-    if (epoch+1) in [1, 10, 30, 50]:
+    if (epoch+1) % 30 == 0:
         # losses
         plt.figure(figsize=(10, 5))
         plt.plot(all_d_losses, label='Discriminator Loss')

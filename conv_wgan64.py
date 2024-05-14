@@ -175,7 +175,7 @@ os.makedirs("report_ConvWgan64_CelebA/images", exist_ok=True)
 # Path to save the models
 save_path = 'saves_ConvWgan64/'
 os.makedirs(save_path, exist_ok=True)
-checkpoint_path = 'saves_ConvWgan64/checkpoint_epoch_319.pth'  
+checkpoint_path = 'saves_ConvWgan64/checkpoint_epoch_1001.pth'  
 
 def load_checkpoint(filepath, generator, discriminator, optimizer_G, optimizer_D):
     checkpoint = torch.load(filepath)
